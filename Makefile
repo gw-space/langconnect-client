@@ -6,29 +6,29 @@ build:
 	@echo "✅ Next.js build completed!"
 	@echo ""
 	@echo "🔨 Building Docker images..."
-	@docker-compose build
+	@docker compose build
 	@echo "✅ Docker build completed successfully!"
 	@echo "📌 Run 'make up' to start the server"
 
 up:
 	@echo "🚀 Starting LangConnect server..."
-	@docker-compose up -d
+	@docker compose up -d
 	@echo "✅ Server started successfully!"
 	@echo "📌 Access points:"
 	@echo "   - API Server: http://localhost:8080"
 	@echo "   - API Docs: http://localhost:8080/docs"
-	@echo "   - Next.js UI: http://localhost:3000"
+	@echo "   - Next.js UI: http://localhost:3001"
 	@echo "   - PostgreSQL: localhost:5432"
 
 down:
 	@echo "🛑 Stopping LangConnect server..."
-	@docker-compose down
+	@docker compose down
 	@echo "✅ Server stopped successfully!"
 
 restart:
 	@echo "🔄 Restarting LangConnect server..."
-	@docker-compose down
-	@docker-compose up -d
+	@docker compose down
+	@docker compose up -d
 	@echo "✅ Server restarted successfully!"
 
 mcp:
