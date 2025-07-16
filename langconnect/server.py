@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -8,6 +9,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from langconnect.api import auth_router, collections_router, documents_router
 from langconnect.config import ALLOWED_ORIGINS
 from langconnect.database.collections import CollectionsManager
+
+# Configure NLTK data path
+try:
+    import nltk
+    nltk_data_path = "/home/langconnect/nltk_data"
+    if os.path.exists(nltk_data_path):
+        nltk.data.path.append(nltk_data_path)
+        logging.info(f"NLTK data path configured: {nltk_data_path}")
+    else:
+        logging.warning(f"NLTK data path does not exist: {nltk_data_path}")
+except ImportError:
+    logging.info("NLTK not available")
 
 # Configure logging
 logging.basicConfig(

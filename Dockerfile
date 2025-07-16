@@ -52,6 +52,11 @@ WORKDIR /app
 RUN mkdir -p /home/langconnect/.cache && \
     chown -R langconnect:langconnect /home/langconnect/.cache
 
+# Create NLTK data directory with proper permissions
+RUN mkdir -p /home/langconnect/nltk_data && \
+    chown -R langconnect:langconnect /home/langconnect/nltk_data && \
+    chmod -R 755 /home/langconnect/nltk_data
+
 # Copy virtual environment from builder
 COPY --from=builder --chown=langconnect:langconnect /app/.venv /app/.venv
 
