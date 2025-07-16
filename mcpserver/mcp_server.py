@@ -128,7 +128,7 @@ async def search_documents(
     query: str,
     limit: int = 5,
     search_type: str = "semantic",
-    filter_json: Optional[str] = None,
+            filter_json: Optional[str] = None,
 ) -> str:
     """Search documents in a collection using semantic, keyword, or hybrid search.
 
@@ -338,34 +338,54 @@ async def list_documents(collection_id: str, limit: int = 20) -> str:
 
 
 @mcp.tool
-async def add_documents(collection_id: str, text: str) -> str:
+async def add_documents(
+    collection_id: str, 
+    text: str, 
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200,
+    enable_chunking: bool = True,
+    metadata_json: Optional[str] = None
+) -> str:
     """Add a text document to a collection.
 
     This function adds a new text document to an existing collection. The document text
-    will be processed, chunked into smaller segments for optimal vector search performance,
-    and stored with embeddings for semantic search capabilities. Each document is automatically
-    tagged with metadata including source information and creation timestamp. The function
-    supports adding plain text content and will handle the chunking and embedding process
-    automatically.
+    will be processed according to the chunking parameters.
+    Each document is automatically tagged with metadata including source information and creation timestamp.
 
     Args:
         collection_id: The unique identifier of the collection to add the document to.
                       This should be obtained from the list_collections() function or
                       provided by the user. Must be a valid UUID string for an existing collection.
         text: The text content of the document to add. This should be the full text content
-              that you want to make searchable. The text will be automatically chunked into
-              smaller segments for optimal retrieval performance. Can be any length, but
-              very large texts will be processed in chunks.
+              that you want to make searchable.
+        chunk_size: Maximum number of characters in each chunk (default: 1000)
+        chunk_overlap: Number of overlapping characters between chunks (default: 200)
+        enable_chunking: Whether to split documents into chunks (default: True)
+        metadata_json: Optional JSON string containing custom metadata for the document
 
     Returns:
         str: Success message indicating the document was added and the number of chunks created.
              Format: "Document added successfully! Created N chunks."
              If the operation fails, returns an error message with details.
     """
+    # Base metadata
     metadata = {"source": "mcp-input", "created_at": datetime.now().isoformat()}
+    
+    # Add custom metadata if provided
+    if metadata_json:
+        try:
+            custom_metadata = json.loads(metadata_json)
+            metadata.update(custom_metadata)
+        except json.JSONDecodeError:
+            return "Failed to add document: Invalid metadata JSON format"
 
     files = [("files", ("document.txt", text.encode("utf-8"), "text/plain"))]
-    data = {"metadatas_json": json.dumps([metadata])}
+    data = {
+        "metadatas_json": json.dumps([metadata]),
+        "chunk_size": str(chunk_size),
+        "chunk_overlap": str(chunk_overlap),
+        "enable_chunking": str(enable_chunking)
+    }
 
     # Remove Content-Type for multipart
     headers = client.headers.copy()

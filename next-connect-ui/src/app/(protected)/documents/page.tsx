@@ -141,7 +141,7 @@ export default function DocumentsPage() {
             source,
             file_id,
             chunks: [],
-            timestamp: metadata.timestamp || 'N/A',
+            timestamp: metadata.timestamp || metadata.created_at || 'N/A',
             total_chars: 0
           }
         }
@@ -1007,7 +1007,7 @@ export default function DocumentsPage() {
                                                               {JSON.stringify(value, null, 2)}
                                                             </pre>
                                                           )
-                                                          : key === 'timestamp' && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)
+                                                          : (key === 'timestamp' || key === 'created_at') && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)
                                                           ? (
                                                             <span className="text-gray-700 dark:text-gray-300">
                                                               {new Date(value).toLocaleString()}
@@ -1044,7 +1044,9 @@ export default function DocumentsPage() {
                               </td>
                               <td className="px-4 py-4">
                                 <div className="text-xs text-gray-500 dark:text-gray-300">
-                                  {doc.metadata?.timestamp ? new Date(doc.metadata.timestamp).toLocaleString() : 'N/A'}
+                                  {doc.metadata?.timestamp || doc.metadata?.created_at ? 
+                                    new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
+                                    'N/A'}
                                 </div>
                               </td>
                             </tr>

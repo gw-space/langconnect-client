@@ -62,6 +62,7 @@ async def documents_create(
     metadatas_json: str | None = Form(None),
     chunk_size: int = Form(1000),
     chunk_overlap: int = Form(200),
+    enable_chunking: bool = Form(True),
 ):
     """Processes and indexes (adds) new document files with optional metadata.
 
@@ -72,6 +73,7 @@ async def documents_create(
         metadatas_json: JSON string containing metadata for each file
         chunk_size: Maximum number of characters in each chunk (default: 1000)
         chunk_overlap: Number of overlapping characters between chunks (default: 200)
+        enable_chunking: Whether to split documents into chunks (default: True)
     """
     # If no metadata JSON is provided, fill with None
     if not metadatas_json:
@@ -107,6 +109,7 @@ async def documents_create(
                 metadata=metadata,
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap,
+                enable_chunking=enable_chunking,
             )
             if langchain_docs:
                 docs_to_index.extend(langchain_docs)

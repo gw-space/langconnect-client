@@ -400,7 +400,7 @@ class Collection:
                     file_ids,
                 )
                 deleted_count += int(result.split()[-1])
-        
+
         return deleted_count
 
     async def list(self, *, limit: int = 10, offset: int = 0) -> list[dict[str, Any]]:
@@ -622,9 +622,7 @@ class Collection:
         combined_results = {}
 
         # Add semantic results with normalized scores
-        max_semantic_score = max(
-            (score for _, score in semantic_results), default=1.0
-        )
+        max_semantic_score = max((score for _, score in semantic_results), default=1.0)
         for doc, score in semantic_results:
             normalized_score = (
                 score / max_semantic_score if max_semantic_score > 0 else 0
@@ -663,9 +661,9 @@ class Collection:
                     combined_results[doc_id] = {
                         "id": doc_id,
                         "page_content": row["page_content"],
-                        "metadata": json.loads(row["metadata"])
-                        if row["metadata"]
-                        else {},
+                        "metadata": (
+                            json.loads(row["metadata"]) if row["metadata"] else {}
+                        ),
                         "semantic_score": 0,
                         "keyword_score": normalized_score,
                         "combined_score": normalized_score * 0.3,

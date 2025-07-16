@@ -313,12 +313,42 @@ async def list_documents(collection_id: str, limit: int = 20) -> str:
 
 
 @mcp.tool
-async def add_documents(collection_id: str, text: str) -> str:
-    """Add a text document to a collection."""
+async def add_documents(
+    collection_id: str, 
+    text: str, 
+    chunk_size: int = 1000,
+    chunk_overlap: int = 200,
+    enable_chunking: bool = True,
+    metadata_json: Optional[str] = None
+) -> str:
+    """Add a text document to a collection.
+
+    Args:
+        collection_id: The unique identifier of the collection to add the document to.
+        text: The text content of the document to add.
+        chunk_size: Maximum number of characters in each chunk (default: 1000)
+        chunk_overlap: Number of overlapping characters between chunks (default: 200)
+        enable_chunking: Whether to split documents into chunks (default: True)
+        metadata_json: Optional JSON string containing custom metadata for the document
+    """
+    # Base metadata
     metadata = {"source": "mcp-input", "created_at": datetime.now().isoformat()}
+    
+    # Add custom metadata if provided
+    if metadata_json:
+        try:
+            custom_metadata = json.loads(metadata_json)
+            metadata.update(custom_metadata)
+        except json.JSONDecodeError:
+            return "Failed to add document: Invalid metadata JSON format"
 
     files = [("files", ("document.txt", text.encode("utf-8"), "text/plain"))]
-    data = {"metadatas_json": json.dumps([metadata])}
+    data = {
+        "metadatas_json": json.dumps([metadata]),
+        "chunk_size": str(chunk_size),
+        "chunk_overlap": str(chunk_overlap),
+        "enable_chunking": str(enable_chunking)
+    }
 
     # Remove Content-Type for multipart
     headers = client.headers.copy()

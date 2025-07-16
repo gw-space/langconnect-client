@@ -40,6 +40,7 @@ async def process_document(
     metadata: dict | None = None,
     chunk_size: int = 1000,
     chunk_overlap: int = 200,
+    enable_chunking: bool = True,
 ) -> list[Document]:
     """Process an uploaded file into LangChain documents."""
     # Generate a unique ID for this file processing instance
@@ -70,31 +71,44 @@ async def process_document(
 
     docs = MIMETYPE_BASED_PARSER.parse(blob)
 
-    # Add provided metadata to each document
-    if metadata:
-        for doc in docs:
-            # Ensure metadata attribute exists and is a dict
-            if not hasattr(doc, "metadata") or not isinstance(doc.metadata, dict):
-                doc.metadata = {}
-            # Update with provided metadata, preserving existing keys if not overridden
-            doc.metadata.update(metadata)
+    # Get the content from the first document
+    content = docs[0].page_content
 
-    # Create text splitter with provided parameters
+    # Set base metadata
+    base_metadata = metadata or {}
+    base_metadata["file_id"] = str(file_id)
+    base_metadata["enable_chunking"] = enable_chunking
+
+    # Process based on chunking preference
+    if enable_chunking:
+        # Apply chunking
+        return process_with_chunking(content, base_metadata, chunk_size, chunk_overlap)
+    else:
+        # No chunking, store as one chunk
+        return process_without_chunking(content, base_metadata)
+
+
+def process_without_chunking(content: str, metadata: dict) -> list[Document]:
+    """Process documents without chunking - store as one chunk."""
+    doc = Document(
+        page_content=content, metadata={**metadata, "chunk_type": "single_chunk"}
+    )
+    return [doc]
+
+
+def process_with_chunking(
+    content: str, metadata: dict, chunk_size: int, chunk_overlap: int
+) -> list[Document]:
+    """Process documents with chunking."""
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, chunk_overlap=chunk_overlap
     )
 
-    # Split documents
-    split_docs = text_splitter.split_documents(docs)
+    temp_doc = Document(page_content=content, metadata=metadata)
+    split_docs = text_splitter.split_documents([temp_doc])
 
-    # Add the generated file_id to all split documents' metadata
-    for split_doc in split_docs:
-        if not hasattr(split_doc, "metadata") or not isinstance(
-            split_doc.metadata, dict
-        ):
-            split_doc.metadata = {}  # Initialize if it doesn't exist
-        split_doc.metadata["file_id"] = str(
-            file_id
-        )  # Store as string for compatibility
+    # Add chunking metadata
+    for doc in split_docs:
+        doc.metadata["chunk_type"] = "chunked"
 
     return split_docs
