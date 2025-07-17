@@ -320,52 +320,6 @@ In the Inspector:
 | `SSE_PORT` | MCP SSE server port (default: 8765) | No |
 
 
-## 👥 Contributors
-
-<table>
-  <tbody>
-    <tr>
-      <td align="center">
-        <a href="https://github.com/teddylee777">
-          <img src="https://avatars.githubusercontent.com/u/10074379?s=400&u=ee37ac1a4bb730df9c80d1ac92311cbbf61c680e&v=4" width="100px;" alt="Teddy Lee"/>
-          <br />
-          <sub><b>Teddy Lee</b></sub>
-        </a>
-        <br />
-        <a href="https://teddylee777.github.io/" title="Portfolio">🏠</a>
-      </td>
-      <td align="center">
-        <a href="https://github.com/fbwndrud">
-          <img src="https://avatars.githubusercontent.com/u/50973794?v=4" width="100px;" alt="fbwndrud"/>
-          <br />
-          <sub><b>fbwndrud</b></sub>
-        </a>
-        <br />
-        <a href="https://github.com/fbwndrud" title="GitHub">🏠</a>
-      </td>
-      <td align="center" valign="top" width="14.28%">
-        <a href="https://github.com/jikime">
-          <img src="https://avatars.githubusercontent.com/u/9925165?v=4" width="100px;" alt="jikime"/>
-          <br />
-          <sub><b>jikime</b></sub>
-        </a>
-        <br />
-        <a href="https://github.com/jikime/next-connect-ui/commits?author=jikime" title="Code">💻</a>
-        <a href="https://github.com/jikime/next-connect-ui/pulls?q=is%3Apr+author%3Ajikime" title="Pull Requests">💪</a>
-      </td>
-      <td valign="top">
-        <strong>Key Contributions</strong>
-        <ul>
-          <li>Next-Connect-UI Development</li>
-        </ul>
-        <strong>Community</strong>
-        <ul>
-          <li><a href="https://www.facebook.com/groups/1183007433518603">Vibe Coding KR Facebook Group</a></li>
-        </ul>
-      </td>
-    </tr>
-  </tbody>
-</table>
 
 ## 📄 License
 
