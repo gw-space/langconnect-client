@@ -566,8 +566,17 @@ async def upload_local_file(
         else:
             return f"Failed to upload file: {result.get('message', 'Unknown error')}"
 
+    except httpx.HTTPStatusError as e:
+        try:
+            error_detail = e.response.json()
+            error_message = error_detail.get('detail', str(e))
+        except:
+            error_message = f"HTTP {e.response.status_code}: {e.response.text}"
+        return f"Error uploading file: {error_message}"
+    except httpx.RequestError as e:
+        return f"Error uploading file: Network error - {e}"
     except Exception as e:
-        return f"Error uploading file: {e}"
+        return f"Error uploading file: Unexpected error - {str(e)}"
 
 
 @mcp.tool
