@@ -71,8 +71,8 @@ async def process_document(
 
     docs = MIMETYPE_BASED_PARSER.parse(blob)
 
-    # Get the content from the first document
-    content = docs[0].page_content
+    # Combine content from all documents (pages)
+    content = "\n\n".join([doc.page_content for doc in docs])
 
     # Set base metadata
     base_metadata = metadata or {}

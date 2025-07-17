@@ -102,6 +102,20 @@ async def documents_create(
     # Pair files with their corresponding metadata
     for file, metadata in zip(files, metadatas, strict=False):
         try:
+            # Check file size (limit to 50MB)
+            file_size = 0
+            file_content = await file.read()
+            file_size = len(file_content)
+            
+            if file_size > 50 * 1024 * 1024:  # 50MB limit
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File {file.filename} is too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is 50MB."
+                )
+            
+            # Reset file position for processing
+            await file.seek(0)
+            
             # Pass metadata and chunk parameters to process_document
             langchain_docs = await process_document(
                 file,
@@ -123,7 +137,9 @@ async def documents_create(
 
         except Exception as proc_exc:
             # Log the error and the file that caused it
-            logger.info(f"Error processing file {file.filename}: {proc_exc}")
+            logger.error(f"Error processing file {file.filename}: {proc_exc}")
+            logger.error(f"Error type: {type(proc_exc).__name__}")
+            logger.error(f"Error details: {str(proc_exc)}")
             failed_files.append(file.filename)
             # Decide on behavior: continue processing others or fail fast?
             # For now, let's collect failures and report them, but continue processing.

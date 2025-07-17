@@ -3,6 +3,7 @@
 
 import json
 import os
+import sys
 from datetime import datetime
 from typing import Optional
 
@@ -495,13 +496,6 @@ async def upload_local_file(
     if not file_path_obj.is_file():
         return f"Error: Path '{file_path}' is not a file"
 
-    # Read file content
-    try:
-        with open(file_path_obj, "rb") as f:
-            file_content = f.read()
-    except Exception as e:
-        return f"Error reading file: {e}"
-
     # Determine file type and filename
     filename = file_path_obj.name
     file_extension = file_path_obj.suffix.lower()
@@ -518,6 +512,13 @@ async def upload_local_file(
     }
 
     mime_type = mime_type_map.get(file_extension, "text/plain")
+
+    # Read file content
+    try:
+        with open(file_path_obj, "rb") as f:
+            file_content = f.read()
+    except Exception as e:
+        return f"Error reading file: {e}"
 
     # Base metadata - source is always the filename
     metadata = {
@@ -544,39 +545,104 @@ async def upload_local_file(
         "enable_chunking": str(enable_chunking),
     }
 
-    # Remove Content-Type for multipart
+    # Prepare headers for multipart upload
     headers = client.headers.copy()
-    headers.pop("Content-Type", None)
+    headers.pop("Content-Type", None)  # Remove for multipart
+
+    # Ensure Authorization header is present
+    if not headers.get("Authorization"):
+        return "Error uploading file: No authorization token available. Please check your authentication."
 
     try:
+        print(
+            f"DEBUG: Starting upload of {filename} ({len(file_content)} bytes) to {client.base_url}/collections/{collection_id}/documents",
+            file=sys.stderr,
+        )
+        print(f"DEBUG: File size: {len(file_content):,} bytes", file=sys.stderr)
+        print(f"DEBUG: MIME type: {mime_type}", file=sys.stderr)
+        print(
+            f"DEBUG: Authorization header present: {'Authorization' in headers}",
+            file=sys.stderr,
+        )
+
         async with httpx.AsyncClient() as http_client:
             response = await http_client.post(
                 f"{client.base_url}/collections/{collection_id}/documents",
                 headers=headers,
                 files=files,
                 data=data,
-                timeout=120.0,
+                timeout=600.0,  # Increased timeout to 10 minutes for large files
             )
-            response.raise_for_status()
-            result = response.json()
+            # Always try to get response content
+            try:
+                response_text = response.text
+                print(
+                    f"DEBUG: Response text length: {len(response_text)}",
+                    file=sys.stderr,
+                )
+                print(
+                    f"DEBUG: Response text preview: {response_text[:200]}...",
+                    file=sys.stderr,
+                )
 
-        if result.get("success"):
-            chunk_count = len(result.get("added_chunk_ids", []))
-            return f"File '{filename}' uploaded successfully! Created {chunk_count} chunks."
-        else:
-            return f"Failed to upload file: {result.get('message', 'Unknown error')}"
+                if response.status_code == 200:
+                    try:
+                        result = response.json()
+                        print(f"DEBUG: Response JSON: {result}", file=sys.stderr)
+
+                        if result.get("success"):
+                            chunk_count = len(result.get("added_chunk_ids", []))
+                            file_id = result.get("file_id", "Unknown")
+                            success_msg = f"SUCCESS: File '{filename}' uploaded. Created {chunk_count} chunks. File ID: {file_id}"
+                            print(
+                                f"DEBUG: Returning success message: {success_msg}",
+                                file=sys.stderr,
+                            )
+                            return success_msg
+                        else:
+                            error_msg = result.get("message", "Unknown error")
+                            error_response = f"ERROR: Upload failed - {error_msg}"
+                            print(
+                                f"DEBUG: Returning error message: {error_response}",
+                                file=sys.stderr,
+                            )
+                            return error_response
+                    except json.JSONDecodeError as json_error:
+                        print(
+                            f"DEBUG: JSON decode error: {json_error}", file=sys.stderr
+                        )
+                        return f"Upload completed but response is not valid JSON: {response_text[:200]}"
+                else:
+                    # Non-200 status code
+                    error_response = f"Upload failed with status {response.status_code}: {response_text[:200]}"
+                    print(
+                        f"DEBUG: Returning HTTP error: {error_response}",
+                        file=sys.stderr,
+                    )
+                    return error_response
+
+            except Exception as parse_error:
+                print(f"DEBUG: Error parsing response: {parse_error}", file=sys.stderr)
+                error_response = f"Upload completed but response parsing failed: {response.status_code} - {response.text[:200]}"
+                print(
+                    f"DEBUG: Returning parse error: {error_response}", file=sys.stderr
+                )
+                return error_response
 
     except httpx.HTTPStatusError as e:
+        print(f"DEBUG: HTTPStatusError: {e}", file=sys.stderr)
         try:
             error_detail = e.response.json()
-            error_message = error_detail.get('detail', str(e))
+            error_message = error_detail.get("detail", str(e))
         except:
-            error_message = f"HTTP {e.response.status_code}: {e.response.text}"
-        return f"Error uploading file: {error_message}"
+            error_message = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
+        return f"Upload failed with HTTP error: {error_message}"
     except httpx.RequestError as e:
-        return f"Error uploading file: Network error - {e}"
+        print(f"DEBUG: RequestError: {e}", file=sys.stderr)
+        return f"Upload failed with network error: {str(e)}"
     except Exception as e:
-        return f"Error uploading file: Unexpected error - {str(e)}"
+        print(f"DEBUG: Unexpected error: {e}", file=sys.stderr)
+        return f"Upload failed with unexpected error: {str(e)}"
 
 
 @mcp.tool

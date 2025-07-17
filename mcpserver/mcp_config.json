@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "langconnect-rag-mcp": {
+      "command": "/Users/yungeon-u/Desktop/Project/langconnect-client/.venv/bin/python",
+      "args": [
+        "/Users/yungeon-u/Desktop/Project/langconnect-client/mcpserver/mcp_server.py"
+      ],
+      "env": {
+        "API_BASE_URL": "http://localhost:8080",
+        "SUPABASE_JWT_SECRET": "eyJhbGciOiJIUzI1NiIsImtpZCI6IlJQc2FsTUNadGpQOVNYREQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NhZHhtdnZpc3p0c3pvcXNzdm1rLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJlYjZjN2VmNi0xMDNlLTQ5ZTktYTI5OC05Yzg2YjBhNDI5YTUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzUyNzUxNTUzLCJpYXQiOjE3NTI3MTU1NTMsImVtYWlsIjoiZ3Vud29veW9vbkBnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoiZ3Vud29veW9vbkBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGhvbmVfdmVyaWZpZWQiOmZhbHNlLCJzdWIiOiJlYjZjN2VmNi0xMDNlLTQ5ZTktYTI5OC05Yzg2YjBhNDI5YTUifSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc1MjcxNTU1M31dLCJzZXNzaW9uX2lkIjoiMTdjMDY1N2EtOTYzMy00YzYwLWEzYTAtOTA4YTJlNzZlMGYyIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.K8CQ85M__VLV-lGSNWaqY1hxutK9KTi4ztEs4IRz3P0"
+      }
+    }
+  }
+}
