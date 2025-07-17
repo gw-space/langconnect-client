@@ -40,6 +40,7 @@ export default function DocumentsPage() {
   const [documentGroups, setDocumentGroups] = useState<DocumentGroup[]>([])
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [loadingChunks, setLoadingChunks] = useState(false)
   const [activeTab, setActiveTab] = useState('documents')
   
   // Pagination states
@@ -96,64 +97,38 @@ export default function DocumentsPage() {
     try {
       setLoading(true)
       
-      // Fetch all documents using pagination
-      let allDocuments: Document[] = []
-      let offset = 0
-      const limit = 100
-
-      while (true) {
-        const response = await fetch(
-          `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${offset}`
-        )
-        const res = await response.json()
-        
-        if (!res.success) {
-          toast.error(t('common.error'), {
-            description: t('documents.messages.fetchError')
-          })
-          break
-        }
-
-        const docs = res.data
-        if (!docs || docs.length === 0) break
-
-        allDocuments = allDocuments.concat(docs)
-
-        if (docs.length < limit) break
-        offset += limit
+      // Fetch document groups efficiently using the backend API
+      const documentGroupsResponse = await fetch(
+        `/api/collections/${selectedCollection}/document-groups?limit=1000`
+      )
+      const documentGroupsRes = await documentGroupsResponse.json()
+      
+      if (!documentGroupsRes.success) {
+        toast.error(t('common.error'), {
+          description: t('documents.messages.fetchError')
+        })
+        return
       }
 
-      setDocuments(allDocuments)
-      setTotalItems(allDocuments.length)
+      const documentGroupsData: DocumentGroup[] = documentGroupsRes.data || []
+      
+      // Transform backend data to match UI expectations
+      const transformedGroups: DocumentGroup[] = documentGroupsData.map(group => ({
+        ...group,
+        timestamp: group.created_at, // For backward compatibility
+        chunks: [] // Will be populated only when needed
+      }))
 
-      // Group documents by source/file_id for the documents tab
-      const sourceGroups: { [key: string]: DocumentGroup } = {}
-      const sources = new Set<string>()
-
-      allDocuments.forEach(doc => {
-        const metadata = doc.metadata || {}
-        const file_id = metadata.file_id || 'N/A'
-        const source = metadata.source || 'N/A'
-        sources.add(source)
-        
-        if (!sourceGroups[file_id]) {
-          sourceGroups[file_id] = {
-            source,
-            file_id,
-            chunks: [],
-            timestamp: metadata.timestamp || metadata.created_at || 'N/A',
-            total_chars: 0
-          }
-        }
-        
-        sourceGroups[file_id].chunks.push(doc)
-        sourceGroups[file_id].total_chars += doc.content.length
-      })
-
-      const groups = Object.values(sourceGroups)
-      setDocumentGroups(groups)
+      setDocumentGroups(transformedGroups)
+      
+      // Extract unique sources
+      const sources = new Set(documentGroupsData.map(group => group.source))
       setAvailableSources(Array.from(sources))
       setSelectedSources(Array.from(sources))
+
+      // Initialize empty documents array - will be loaded only when needed
+      setDocuments([])
+      setTotalItems(0)
 
     } catch (error) {
       console.error('Failed to fetch documents:', error)
@@ -173,8 +148,57 @@ export default function DocumentsPage() {
   useEffect(() => {
     if (selectedCollection) {
       fetchDocuments()
+      setChunksLoaded(false) // Reset chunks loaded state when collection changes
     }
   }, [selectedCollection, fetchDocuments])
+
+  // Load chunks only when switching to chunks tab
+  const [chunksLoaded, setChunksLoaded] = useState(false)
+  
+  const loadChunks = useCallback(async () => {
+    if (!selectedCollection || chunksLoaded) return
+
+    try {
+      setLoadingChunks(true)
+      let allDocuments: Document[] = []
+      let offset = 0
+      const limit = 100
+
+      while (true) {
+        const response = await fetch(
+          `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${offset}`
+        )
+        const res = await response.json()
+        
+        if (!res.success) {
+          break
+        }
+
+        const docs = res.data
+        if (!docs || docs.length === 0) break
+
+        allDocuments = allDocuments.concat(docs)
+
+        if (docs.length < limit) break
+        offset += limit
+      }
+
+      setDocuments(allDocuments)
+      setTotalItems(allDocuments.length)
+      setChunksLoaded(true)
+    } catch (error) {
+      console.error('Failed to load chunks:', error)
+    } finally {
+      setLoadingChunks(false)
+    }
+  }, [selectedCollection, chunksLoaded])
+
+  // Load chunks when switching to chunks tab
+  useEffect(() => {
+    if (activeTab === 'chunks' && selectedCollection && !chunksLoaded) {
+      loadChunks()
+    }
+  }, [activeTab, selectedCollection, chunksLoaded, loadChunks])
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -300,8 +324,8 @@ export default function DocumentsPage() {
 
   // Statistics calculation
   const totalDocuments = documentGroups.length
-  const totalChunks = documents.length
-  const totalCharacters = documents.reduce((sum, doc) => sum + doc.content.length, 0)
+  const totalChunks = documentGroups.reduce((sum, group) => sum + group.chunk_count, 0)
+  const totalCharacters = documentGroups.reduce((sum, group) => sum + group.total_chars, 0)
   
 
 
@@ -647,7 +671,7 @@ export default function DocumentsPage() {
                                                 </div>
                                                 <div className="flex justify-between">
                                                   <span className="text-gray-500 dark:text-gray-400">{t('collections.stats.chunks')}:</span>
-                                                  <span className="font-medium">{t('collections.stats.chunksCount', { count: group.chunks.length })}</span>
+                                                  <span className="font-medium">{t('collections.stats.chunksCount', { count: group.chunk_count })}</span>
                                                 </div>
                                                 <div className="flex justify-between">
                                                   <span className="text-gray-500 dark:text-gray-400">Characters:</span>
@@ -670,10 +694,10 @@ export default function DocumentsPage() {
                                                     <span className="text-sm font-medium text-green-700">{t('collections.stats.chunks')}</span>
                                                   </div>
                                                   <div className="text-lg font-bold text-green-900 dark:text-green-100">
-                                                    {group.chunks.length}
+                                                    {group.chunk_count}
                                                   </div>
                                                   <div className="text-xs text-green-600">
-                                                    Avg {Math.round(group.total_chars / group.chunks.length)} chars/chunk
+                                                    Avg {Math.round(group.total_chars / group.chunk_count)} chars/chunk
                                                   </div>
                                                 </div>
                                                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
@@ -693,26 +717,15 @@ export default function DocumentsPage() {
 
                                             {/* 청크 목록 */}
                                             <div>
-                                              <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400 mb-2">Chunk List ({group.chunks.length})</h4>
+                                              <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400 mb-2">Chunk List ({group.chunk_count})</h4>
                                               <ScrollArea className="h-40 w-full rounded border">
-                                                <div className="p-2 space-y-2">
-                                                  {group.chunks.map((chunk, index) => (
-                                                    <div key={chunk.id} className="text-xs border dark:border-gray-700 rounded p-2 bg-gray-50 dark:bg-gray-800">
-                                                      <div className="flex justify-between items-start mb-1">
-                                                        <span className="font-mono text-gray-500 dark:text-gray-400">#{index + 1}</span>
-                                                        <code className="text-xs bg-white dark:bg-gray-700 px-1 rounded">
-                                                          {chunk.id.slice(0, 8)}...
-                                                        </code>
-                                                      </div>
-                                                      <p className="text-gray-700 dark:text-gray-300 line-clamp-2">
-                                                        {chunk.content.slice(0, 100)}{chunk.content.length > 100 ? '...' : ''}
-                                                      </p>
-                                                      <div className="text-gray-500 dark:text-gray-400 mt-1">
-                                                        {chunk.content.length} chars
-                                                      </div>
+                                                                                                  <div className="p-2 space-y-2">
+                                                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">
+                                                      Chunk details are loaded on demand for better performance.
+                                                      <br />
+                                                      Total chunks: {group.chunk_count}
                                                     </div>
-                                                  ))}
-                                                </div>
+                                                  </div>
                                               </ScrollArea>
                                             </div>
                                           </div>
@@ -726,7 +739,7 @@ export default function DocumentsPage() {
                                 <div className="flex items-center space-x-2">
                                   <Badge variant="secondary" className="text-xs">
                                     <Archive className="w-3 h-3 mr-1" />
-                                    {t('collections.stats.chunksCount', { count: group.chunks.length })}
+                                    {t('collections.stats.chunksCount', { count: group.chunk_count })}
                                   </Badge>
                                   <Badge variant="outline" className="text-xs">
                                     {group.total_chars.toLocaleString()} chars
@@ -846,7 +859,14 @@ export default function DocumentsPage() {
                       </div>
                     )}
                     
-                    {filteredDocuments.length === 0 ? (
+                    {loadingChunks ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Loading chunks...</p>
+                        </div>
+                      </div>
+                    ) : filteredDocuments.length === 0 ? (
                       <EmptyChunksState />
                     ) : (
                       <div className="overflow-x-auto">

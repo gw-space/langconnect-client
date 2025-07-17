@@ -1,13 +1,13 @@
 {
   "mcpServers": {
     "langconnect-rag-mcp": {
-      "command": "/Users/teddy/Dev/github/03-teddynote-lab/langconnect-client/.venv/bin/python",
+      "command": "/Users/yungeon-u/Desktop/Project/langconnect-client/.venv/bin/python",
       "args": [
-        "/Users/teddy/Dev/github/03-teddynote-lab/langconnect-client/mcpserver/mcp_server.py"
+        "/Users/yungeon-u/Desktop/Project/langconnect-client/mcpserver/mcp_server.py"
       ],
       "env": {
         "API_BASE_URL": "http://localhost:8080",
-        "SUPABASE_JWT_SECRET": "eyJhbGciOiJIUzI1NiIsImtpZCI6IkkyZmZaNFJpRU1uaFZPR0QiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2tkeWtzc2VuYmVudm1mcXNlcnR6LnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiIxN2JkODRiNS1lMmQ1LTQ0OWQtOGExZi05Y2M5ZDQ3ZmY5OGYiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzUyNjM4MDQ3LCJpYXQiOjE3NTIwMzMyNDcsImVtYWlsIjoidGVkZHlsZWU3NzdAZ21haWwuY29tIiwicGhvbmUiOiIiLCJhcHBfbWV0YWRhdGEiOnsicHJvdmlkZXIiOiJlbWFpbCIsInByb3ZpZGVycyI6WyJlbWFpbCJdfSwidXNlcl9tZXRhZGF0YSI6eyJlbWFpbCI6InRlZGR5bGVlNzc3QGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaG9uZV92ZXJpZmllZCI6ZmFsc2UsInN1YiI6IjE3YmQ4NGI1LWUyZDUtNDQ5ZC04YTFmLTljYzlkNDdmZjk4ZiJ9LCJyb2xlIjoiYXV0aGVudGljYXRlZCIsImFhbCI6ImFhbDEiLCJhbXIiOlt7Im1ldGhvZCI6InBhc3N3b3JkIiwidGltZXN0YW1wIjoxNzUyMDMzMjQ3fV0sInNlc3Npb25faWQiOiIzMDExN2VlOC1mZTJhLTQwZTQtYWU2OS00OTY1MzM3ZjRlOGYiLCJpc19hbm9ueW1vdXMiOmZhbHNlfQ.XjIKkR3BdMye_Cmm4IqXBDxh2VYoQs-SAxW3J0RU3QM"
+        "SUPABASE_JWT_SECRET": "eyJhbGciOiJIUzI1NiIsImtpZCI6IlJQc2FsTUNadGpQOVNYREQiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL3NhZHhtdnZpc3p0c3pvcXNzdm1rLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiJlYjZjN2VmNi0xMDNlLTQ5ZTktYTI5OC05Yzg2YjBhNDI5YTUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzUyNzUxNTUzLCJpYXQiOjE3NTI3MTU1NTMsImVtYWlsIjoiZ3Vud29veW9vbkBnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoiZ3Vud29veW9vbkBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGhvbmVfdmVyaWZpZWQiOmZhbHNlLCJzdWIiOiJlYjZjN2VmNi0xMDNlLTQ5ZTktYTI5OC05Yzg2YjBhNDI5YTUifSwicm9sZSI6ImF1dGhlbnRpY2F0ZWQiLCJhYWwiOiJhYWwxIiwiYW1yIjpbeyJtZXRob2QiOiJwYXNzd29yZCIsInRpbWVzdGFtcCI6MTc1MjcxNTU1M31dLCJzZXNzaW9uX2lkIjoiMTdjMDY1N2EtOTYzMy00YzYwLWEzYTAtOTA4YTJlNzZlMGYyIiwiaXNfYW5vbnltb3VzIjpmYWxzZX0.K8CQ85M__VLV-lGSNWaqY1hxutK9KTi4ztEs4IRz3P0"
       }
     }
   }

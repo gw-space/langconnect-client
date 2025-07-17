@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["documents"])
 
+
 @router.delete(
     "/collections/{collection_id}/documents",
     response_model=dict[str, Any],
@@ -50,8 +51,6 @@ async def documents_bulk_delete(
     )
 
     return {"success": True, "deleted_count": deleted_count}
-
-
 
 
 @router.post("/collections/{collection_id}/documents", response_model=dict[str, Any])
@@ -257,3 +256,20 @@ async def documents_search(
         filter=search_query.filter,
     )
     return results
+
+
+@router.get(
+    "/collections/{collection_id}/document-groups", response_model=list[dict[str, Any]]
+)
+async def document_groups_list(
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    collection_id: UUID,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """Lists document groups (original files) within a specific collection, aggregated by file_id."""
+    collection = Collection(
+        collection_id=str(collection_id),
+        user_id=user.identity,
+    )
+    return await collection.aggregate_document_groups(limit=limit, offset=offset)

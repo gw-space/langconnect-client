@@ -12,7 +12,7 @@ import builtins
 import json
 import logging
 import uuid
-from typing import Any, Literal, NotRequired, Optional, TypedDict
+from typing import Any, Literal, NotRequired, Optional, TypedDict, List, Dict
 
 from fastapi import status
 from fastapi.exceptions import HTTPException
@@ -689,3 +689,40 @@ class Collection:
         )[:limit]
 
         return sorted_results
+
+    async def aggregate_document_groups(
+        self, limit: int = 20, offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """Aggregate document groups by file_id, returning chunk count, total chars, and metadata."""
+        async with get_db_connection() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT
+                    e.cmetadata->>'file_id' AS file_id,
+                    MIN(e.cmetadata->>'source') AS source,
+                    MIN(e.cmetadata->>'created_at') AS created_at,
+                    COUNT(*) AS chunk_count,
+                    SUM(LENGTH(e.document)) AS total_chars
+                FROM langchain_pg_embedding e
+                JOIN langchain_pg_collection c ON e.collection_id = c.uuid
+                WHERE c.uuid = $1
+                  AND c.cmetadata->>'owner_id' = $2
+                GROUP BY e.cmetadata->>'file_id'
+                ORDER BY MAX(e.cmetadata->>'created_at') DESC
+                LIMIT $3 OFFSET $4
+                """,
+                self.collection_id,
+                self.user_id,
+                limit,
+                offset,
+            )
+        return [
+            {
+                "file_id": row["file_id"],
+                "source": row["source"],
+                "created_at": row["created_at"],
+                "chunk_count": row["chunk_count"],
+                "total_chars": row["total_chars"],
+            }
+            for row in rows
+        ]

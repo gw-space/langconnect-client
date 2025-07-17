@@ -12,7 +12,10 @@ export interface Document {
 export interface DocumentGroup {
   source: string
   file_id: string
-  chunks: Document[]
-  timestamp: string
+  chunk_count: number
   total_chars: number
+  created_at: string
+  // For backward compatibility with existing UI code
+  chunks?: Document[]
+  timestamp?: string
 }
