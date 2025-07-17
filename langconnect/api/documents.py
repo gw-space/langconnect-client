@@ -106,16 +106,16 @@ async def documents_create(
             file_size = 0
             file_content = await file.read()
             file_size = len(file_content)
-            
+
             if file_size > 50 * 1024 * 1024:  # 50MB limit
                 raise HTTPException(
                     status_code=400,
-                    detail=f"File {file.filename} is too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is 50MB."
+                    detail=f"File {file.filename} is too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is 50MB.",
                 )
-            
+
             # Reset file position for processing
             await file.seek(0)
-            
+
             # Pass metadata and chunk parameters to process_document
             langchain_docs = await process_document(
                 file,
@@ -289,3 +289,151 @@ async def document_groups_list(
         user_id=user.identity,
     )
     return await collection.aggregate_document_groups(limit=limit, offset=offset)
+
+
+@router.post(
+    "/collections/{collection_id}/documents/upload-only", response_model=dict[str, Any]
+)
+async def documents_upload_only(
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    collection_id: UUID,
+    files: list[UploadFile] = File(...),
+    metadatas_json: str | None = Form(None),
+    chunk_size: int = Form(1000),
+    chunk_overlap: int = Form(200),
+    enable_chunking: bool = Form(True),
+):
+    """Upload files only without processing embeddings. Returns immediately with file info."""
+
+    # If no metadata JSON is provided, fill with None
+    if not metadatas_json:
+        metadatas: list[dict] | list[None] = [None] * len(files)
+    else:
+        try:
+            metadatas = _metadata_adapter.validate_json(metadatas_json)
+        except ValidationError as e:
+            raise HTTPException(status_code=400, detail=e.errors())
+        if len(metadatas) != len(files):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Number of metadata objects ({len(metadatas)}) "
+                    f"does not match number of files ({len(files)})."
+                ),
+            )
+
+    uploaded_files = []
+    failed_files = []
+
+    # Process files but don't create embeddings
+    for file, metadata in zip(files, metadatas, strict=False):
+        try:
+            # Check file size (limit to 50MB)
+            file_size = 0
+            file_content = await file.read()
+            file_size = len(file_content)
+
+            if file_size > 50 * 1024 * 1024:  # 50MB limit
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File {file.filename} is too large ({file_size / 1024 / 1024:.1f}MB). Maximum size is 50MB.",
+                )
+
+            # Reset file position for processing
+            await file.seek(0)
+
+            # Process document to get chunks (but don't save to database)
+            langchain_docs = await process_document(
+                file,
+                metadata=metadata,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                enable_chunking=enable_chunking,
+            )
+
+            if langchain_docs:
+                uploaded_files.append(
+                    {
+                        "filename": file.filename,
+                        "file_size": file_size,
+                        "chunk_count": len(langchain_docs),
+                        "metadata": metadata,
+                        "chunks": langchain_docs,  # Store chunks for later processing
+                    }
+                )
+            else:
+                logger.info(
+                    f"Warning: File {file.filename} resulted in no processable documents."
+                )
+                failed_files.append(file.filename)
+
+        except Exception as proc_exc:
+            logger.error(f"Error processing file {file.filename}: {proc_exc}")
+            failed_files.append(file.filename)
+
+    if not uploaded_files:
+        error_detail = "Failed to process any documents from the provided files."
+        if failed_files:
+            error_detail += f" Files that failed processing: {', '.join(failed_files)}."
+        raise HTTPException(status_code=400, detail=error_detail)
+
+    # Return file info immediately without creating embeddings
+    total_chunks = sum(file_info["chunk_count"] for file_info in uploaded_files)
+
+    return {
+        "success": True,
+        "message": f"Files uploaded successfully. {len(uploaded_files)} files processed, {total_chunks} chunks ready for embedding.",
+        "uploaded_files": uploaded_files,
+        "total_chunks": total_chunks,
+        "failed_files": failed_files,
+        "collection_id": str(collection_id),
+        "user_id": user.identity,
+    }
+
+
+@router.post(
+    "/collections/{collection_id}/documents/process-embeddings",
+    response_model=dict[str, Any],
+)
+async def process_embeddings(
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    collection_id: UUID,
+    chunks_data: list[dict[str, Any]],
+):
+    """Process embeddings for uploaded chunks and save to database."""
+
+    try:
+        collection = Collection(
+            collection_id=str(collection_id),
+            user_id=user.identity,
+        )
+
+        # Convert chunks data back to Document objects
+        documents = []
+        for chunk_data in chunks_data:
+            doc = Document(
+                page_content=chunk_data["page_content"], metadata=chunk_data["metadata"]
+            )
+            documents.append(doc)
+
+        # Process embeddings and save to database
+        added_ids = await collection.upsert(documents)
+
+        if not added_ids:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to add embeddings to vector store.",
+            )
+
+        return {
+            "success": True,
+            "message": f"Successfully processed {len(added_ids)} embeddings.",
+            "added_chunk_ids": added_ids,
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing embeddings: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process embeddings: {str(e)}",
+        )
