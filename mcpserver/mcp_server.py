@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """LangConnect MCP Server using FastMCP (stdio)"""
 
+import asyncio
 import json
 import os
 import sys
@@ -496,6 +497,13 @@ async def upload_local_file(
     if not file_path_obj.is_file():
         return f"Error: Path '{file_path}' is not a file"
 
+    # Read file content
+    try:
+        with open(file_path_obj, "rb") as f:
+            file_content = f.read()
+    except Exception as e:
+        return f"Error reading file: {e}"
+
     # Determine file type and filename
     filename = file_path_obj.name
     file_extension = file_path_obj.suffix.lower()
@@ -513,16 +521,9 @@ async def upload_local_file(
 
     mime_type = mime_type_map.get(file_extension, "text/plain")
 
-    # Read file content
-    try:
-        with open(file_path_obj, "rb") as f:
-            file_content = f.read()
-    except Exception as e:
-        return f"Error reading file: {e}"
-
     # Base metadata - source is always the filename
     metadata = {
-        "source": filename,  # Always use filename as source
+        "source": filename,
         "created_at": datetime.now().isoformat(),
         "file_path": str(file_path_obj.absolute()),
         "file_size": len(file_content),
@@ -534,7 +535,7 @@ async def upload_local_file(
             custom_metadata = json.loads(metadata_json)
             metadata.update(custom_metadata)
         except json.JSONDecodeError:
-            return "Failed to upload file: Invalid metadata JSON format"
+            return "Error: Invalid metadata JSON format"
 
     # Prepare file upload
     files = [("files", (filename, file_content, mime_type))]
@@ -551,98 +552,26 @@ async def upload_local_file(
 
     # Ensure Authorization header is present
     if not headers.get("Authorization"):
-        return "Error uploading file: No authorization token available. Please check your authentication."
+        return "Error: No authorization token available"
 
-    try:
-        print(
-            f"DEBUG: Starting upload of {filename} ({len(file_content)} bytes) to {client.base_url}/collections/{collection_id}/documents",
-            file=sys.stderr,
-        )
-        print(f"DEBUG: File size: {len(file_content):,} bytes", file=sys.stderr)
-        print(f"DEBUG: MIME type: {mime_type}", file=sys.stderr)
-        print(
-            f"DEBUG: Authorization header present: {'Authorization' in headers}",
-            file=sys.stderr,
-        )
-
+    # 백그라운드에서 업로드 실행
+    async def upload_file():
         async with httpx.AsyncClient() as http_client:
-            response = await http_client.post(
-                f"{client.base_url}/collections/{collection_id}/documents",
-                headers=headers,
-                files=files,
-                data=data,
-                timeout=600.0,  # Increased timeout to 10 minutes for large files
-            )
-            # Always try to get response content
             try:
-                response_text = response.text
-                print(
-                    f"DEBUG: Response text length: {len(response_text)}",
-                    file=sys.stderr,
+                response = await http_client.post(
+                    f"{client.base_url}/collections/{collection_id}/documents",
+                    headers=headers,
+                    files=files,
+                    data=data,
+                    timeout=1800.0,
                 )
-                print(
-                    f"DEBUG: Response text preview: {response_text[:200]}...",
-                    file=sys.stderr,
-                )
+                print(f"Upload completed: {response.status_code}")
+            except Exception as e:
+                print(f"Upload failed: {e}")
 
-                if response.status_code == 200:
-                    try:
-                        result = response.json()
-                        print(f"DEBUG: Response JSON: {result}", file=sys.stderr)
-
-                        if result.get("success"):
-                            chunk_count = len(result.get("added_chunk_ids", []))
-                            file_id = result.get("file_id", "Unknown")
-                            success_msg = f"SUCCESS: File '{filename}' uploaded. Created {chunk_count} chunks. File ID: {file_id}"
-                            print(
-                                f"DEBUG: Returning success message: {success_msg}",
-                                file=sys.stderr,
-                            )
-                            return success_msg
-                        else:
-                            error_msg = result.get("message", "Unknown error")
-                            error_response = f"ERROR: Upload failed - {error_msg}"
-                            print(
-                                f"DEBUG: Returning error message: {error_response}",
-                                file=sys.stderr,
-                            )
-                            return error_response
-                    except json.JSONDecodeError as json_error:
-                        print(
-                            f"DEBUG: JSON decode error: {json_error}", file=sys.stderr
-                        )
-                        return f"Upload completed but response is not valid JSON: {response_text[:200]}"
-                else:
-                    # Non-200 status code
-                    error_response = f"Upload failed with status {response.status_code}: {response_text[:200]}"
-                    print(
-                        f"DEBUG: Returning HTTP error: {error_response}",
-                        file=sys.stderr,
-                    )
-                    return error_response
-
-            except Exception as parse_error:
-                print(f"DEBUG: Error parsing response: {parse_error}", file=sys.stderr)
-                error_response = f"Upload completed but response parsing failed: {response.status_code} - {response.text[:200]}"
-                print(
-                    f"DEBUG: Returning parse error: {error_response}", file=sys.stderr
-                )
-                return error_response
-
-    except httpx.HTTPStatusError as e:
-        print(f"DEBUG: HTTPStatusError: {e}", file=sys.stderr)
-        try:
-            error_detail = e.response.json()
-            error_message = error_detail.get("detail", str(e))
-        except:
-            error_message = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
-        return f"Upload failed with HTTP error: {error_message}"
-    except httpx.RequestError as e:
-        print(f"DEBUG: RequestError: {e}", file=sys.stderr)
-        return f"Upload failed with network error: {str(e)}"
-    except Exception as e:
-        print(f"DEBUG: Unexpected error: {e}", file=sys.stderr)
-        return f"Upload failed with unexpected error: {str(e)}"
+    # 백그라운드 태스크로 시작
+    asyncio.create_task(upload_file())
+    return "Upload started in background. It may take several minutes to complete.\n"
 
 
 @mcp.tool
