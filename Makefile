@@ -6,7 +6,7 @@ build:
 	@echo "✅ Next.js build completed!"
 	@echo ""
 	@echo "🔨 Building Docker images..."
-	@docker compose build
+	@docker compose build --no-cache
 	@echo "✅ Docker build completed successfully!"
 	@echo "📌 Run 'make up' to start the server"
 
@@ -22,7 +22,8 @@ up:
 
 up-build:
 	@echo "🔨 Building and starting LangConnect server..."
-	@docker compose up --build -d
+	@docker compose build --no-cache
+	@docker compose up -d
 	@echo "✅ Server built and started successfully!"
 	@echo "📌 Access points:"
 	@echo "   - API Server: http://localhost:8080"

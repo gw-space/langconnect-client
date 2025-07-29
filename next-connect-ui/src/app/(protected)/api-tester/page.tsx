@@ -78,6 +78,14 @@ const API_ENDPOINTS = {
       params: ['collection_id']
     },
     {
+      id: 'get-document-groups',
+      name: 'List Document Groups',
+      method: 'GET' as const,
+      path: '/collections/{collection_id}/document-groups',
+      description: 'List document groups in collection',
+      params: ['collection_id']
+    },
+    {
       id: 'create-documents',
       name: 'Create Documents',
       method: 'POST' as const,
@@ -297,13 +305,18 @@ export default function APITesterPage() {
       }
 
       const response = await fetch(url, options)
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (e) {
+        data = await response.text()
+      }
 
       const apiResponse: APIResponse = {
         success: response.ok,
         status: response.status,
         data: response.ok ? data : undefined,
-        error: !response.ok ? (data.message || data.error || 'Request failed') : undefined
+        error: !response.ok ? (data.message || data.error || data.detail || 'Request failed') : undefined
       }
 
       setResponse(apiResponse)
