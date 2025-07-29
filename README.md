@@ -173,7 +173,7 @@ make down
    ```
 
 2. **Access the services**
-   - 🎨 **Frontend**: http://localhost:3000
+   - 🎨 **Frontend**: http://localhost:3001
    - 📚 **API Documentation**: http://localhost:8080/docs
    - 🔍 **Health Check**: http://localhost:8080/health
 
@@ -186,6 +186,93 @@ make down
    ```bash
    make logs
    ```
+
+### Building and Development
+
+#### **Quick Build Commands**
+
+```bash
+# Build all services
+make build
+
+# Build and start (recommended for development)
+make up-build
+
+# Build specific service
+docker compose build --no-cache api      # Backend only
+docker compose build --no-cache nextjs   # Frontend only
+```
+
+#### **Development Workflow**
+
+1. **Code Changes After Build**
+   ```bash
+   # After making code changes
+   make up-build  # Rebuild and restart with changes
+   ```
+
+2. **Force Rebuild (When Changes Don't Apply)**
+   ```bash
+   # Stop all services
+   make down
+   
+   # Force rebuild without cache
+   docker compose build --no-cache
+   
+   # Start services
+   make up
+   ```
+
+3. **Individual Service Rebuild**
+   ```bash
+   # Rebuild only backend (Python/FastAPI changes)
+   docker compose build --no-cache api
+   docker compose up -d api
+   
+   # Rebuild only frontend (Next.js/TypeScript changes)
+   docker compose build --no-cache nextjs
+   docker compose up -d nextjs
+   ```
+
+#### **Available Make Commands**
+
+| Command | Description |
+|---------|-------------|
+| `make build` | Build all Docker images |
+| `make up` | Start services (uses existing images) |
+| `make up-build` | Build and start services (applies code changes) |
+| `make down` | Stop all services |
+| `make restart` | Restart services (no rebuild) |
+| `make logs` | View service logs |
+
+#### **Troubleshooting Build Issues**
+
+**When Code Changes Don't Apply:**
+```bash
+# 1. Check if containers are using old images
+docker ps
+
+# 2. Force rebuild and restart
+make down
+docker compose build --no-cache
+make up
+
+# 3. Or use the convenient command
+make up-build
+```
+
+**TypeScript/ESLint Errors:**
+```bash
+# Build frontend locally to see errors
+cd next-connect-ui
+npm run build
+```
+
+**Backend Build Issues:**
+```bash
+# Check backend logs
+docker logs langconnect-api
+```
 
 ## 🤖 MCP Integration
 

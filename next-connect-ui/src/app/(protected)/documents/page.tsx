@@ -99,7 +99,7 @@ export default function DocumentsPage() {
       
       // Fetch document groups efficiently using the backend API
       const documentGroupsResponse = await fetch(
-        `/api/collections/${selectedCollection}/document-groups?limit=1000`
+        `/api/collections/${selectedCollection}/document-groups?limit=100`
       )
       const documentGroupsRes = await documentGroupsResponse.json()
       
@@ -161,37 +161,57 @@ export default function DocumentsPage() {
     try {
       setLoadingChunks(true)
       let allDocuments: Document[] = []
-      let offset = 0
-      const limit = 100
+      const limit = 3000 // 안전하고 효율적인 배치 사이즈
 
-      while (true) {
+      // 병렬 요청으로 성능 개선
+      const fetchBatch = async (batchOffset: number) => {
         const response = await fetch(
-          `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${offset}`
+          `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${batchOffset}`
         )
         const res = await response.json()
         
         if (!res.success) {
-          break
+          throw new Error('Failed to fetch batch')
         }
+        
+        return res.data || []
+      }
 
-        const docs = res.data
-        if (!docs || docs.length === 0) break
-
-        allDocuments = allDocuments.concat(docs)
-
-        if (docs.length < limit) break
-        offset += limit
+      // 첫 번째 배치로 전체 개수 확인
+      const firstBatch = await fetchBatch(0)
+      allDocuments = firstBatch
+      
+      if (firstBatch.length === limit) {
+        // 더 많은 데이터가 있는 경우, 병렬로 나머지 배치들을 가져옴
+        const remainingBatches = []
+        let currentOffset = limit
+        
+        while (true) {
+          const batch = await fetchBatch(currentOffset)
+          if (batch.length === 0) break
+          
+          allDocuments = allDocuments.concat(batch)
+          currentOffset += limit
+          
+          if (batch.length < limit) break
+        }
       }
 
       setDocuments(allDocuments)
       setTotalItems(allDocuments.length)
       setChunksLoaded(true)
+      
+      toast.success(t('documents.messages.loadSuccess', { count: allDocuments.length }))
+      
     } catch (error) {
       console.error('Failed to load chunks:', error)
+      toast.error(t('common.error'), {
+        description: t('documents.messages.fetchError')
+      })
     } finally {
       setLoadingChunks(false)
     }
-  }, [selectedCollection, chunksLoaded])
+  }, [selectedCollection, chunksLoaded, t])
 
   // Load chunks when switching to chunks tab
   useEffect(() => {
@@ -679,7 +699,7 @@ export default function DocumentsPage() {
                                                 </div>
                                                 <div className="flex justify-between">
                                                   <span className="text-gray-500 dark:text-gray-400">Created:</span>
-                                                  <span>{group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}</span>
+                                                  <span>{group.timestamp && group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}</span>
                                                 </div>
                                               </div>
                                             </div>
@@ -753,7 +773,7 @@ export default function DocumentsPage() {
                               </td>
                               <td className="px-4 py-4">
                                 <div className="text-xs text-gray-500 dark:text-gray-300">
-                                  {group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}
+                                                                                  {group.timestamp && group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}
                                 </div>
                               </td>
                             </tr>

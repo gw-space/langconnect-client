@@ -20,6 +20,16 @@ up:
 	@echo "   - Next.js UI: http://localhost:3001"
 	@echo "   - PostgreSQL: localhost:5432"
 
+up-build:
+	@echo "🔨 Building and starting LangConnect server..."
+	@docker compose up --build -d
+	@echo "✅ Server built and started successfully!"
+	@echo "📌 Access points:"
+	@echo "   - API Server: http://localhost:8080"
+	@echo "   - API Docs: http://localhost:8080/docs"
+	@echo "   - Next.js UI: http://localhost:3001"
+	@echo "   - PostgreSQL: localhost:5432"
+
 down:
 	@echo "🛑 Stopping LangConnect server..."
 	@docker compose down

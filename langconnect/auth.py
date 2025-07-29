@@ -69,26 +69,38 @@ def get_current_user(authorization: str) -> User:
     return user
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def resolve_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
 ) -> AuthenticatedUser | None:
     """Resolve user from the credentials."""
+    logger.info(f"Resolving user with scheme: {credentials.scheme}")
+
     if credentials.scheme != "Bearer":
+        logger.error(f"Invalid authentication scheme: {credentials.scheme}")
         raise HTTPException(status_code=401, detail="Invalid authentication scheme")
 
     if not credentials.credentials:
+        logger.error("No credentials provided")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     if config.IS_TESTING:
+        logger.info(f"Testing mode - credentials: {credentials.credentials}")
         if credentials.credentials in {"user1", "user2"}:
             return AuthenticatedUser(credentials.credentials, credentials.credentials)
         raise HTTPException(
             status_code=401, detail="Invalid credentials or user not found"
         )
 
-    user = get_current_user(credentials.credentials)
-
-    if not user:
+    logger.info("Attempting to get current user from Supabase")
+    try:
+        user = get_current_user(credentials.credentials)
+        logger.info(f"User resolved successfully: {user.id}")
+        return AuthenticatedUser(user.id, user.user_metadata.get("name", "User"))
+    except Exception as e:
+        logger.error(f"Error resolving user: {type(e).__name__}: {str(e)}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    return AuthenticatedUser(user.id, user.user_metadata.get("name", "User"))

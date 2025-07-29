@@ -172,7 +172,7 @@ make down
    ```
 
 2. **서비스 액세스**
-   - 🎨 **프론트엔드**: http://localhost:3000
+   - 🎨 **프론트엔드**: http://localhost:3001
    - 📚 **API 문서**: http://localhost:8080/docs
    - 🔍 **상태 확인**: http://localhost:8080/health
 
@@ -185,6 +185,93 @@ make down
    ```bash
    make logs
    ```
+
+### 빌드 및 개발
+
+#### **빠른 빌드 명령어**
+
+```bash
+# 모든 서비스 빌드
+make build
+
+# 빌드 및 시작 (개발 시 권장)
+make up-build
+
+# 특정 서비스 빌드
+docker compose build --no-cache api      # 백엔드만
+docker compose build --no-cache nextjs   # 프론트엔드만
+```
+
+#### **개발 워크플로우**
+
+1. **빌드 후 코드 변경**
+   ```bash
+   # 코드 변경 후
+   make up-build  # 변경사항과 함께 재빌드 및 재시작
+   ```
+
+2. **강제 재빌드 (변경사항이 적용되지 않을 때)**
+   ```bash
+   # 모든 서비스 중지
+   make down
+   
+   # 캐시 없이 강제 재빌드
+   docker compose build --no-cache
+   
+   # 서비스 시작
+   make up
+   ```
+
+3. **개별 서비스 재빌드**
+   ```bash
+   # 백엔드만 재빌드 (Python/FastAPI 변경사항)
+   docker compose build --no-cache api
+   docker compose up -d api
+   
+   # 프론트엔드만 재빌드 (Next.js/TypeScript 변경사항)
+   docker compose build --no-cache nextjs
+   docker compose up -d nextjs
+   ```
+
+#### **사용 가능한 Make 명령어**
+
+| 명령어 | 설명 |
+|--------|------|
+| `make build` | 모든 Docker 이미지 빌드 |
+| `make up` | 서비스 시작 (기존 이미지 사용) |
+| `make up-build` | 빌드 및 서비스 시작 (코드 변경사항 적용) |
+| `make down` | 모든 서비스 중지 |
+| `make restart` | 서비스 재시작 (재빌드 없음) |
+| `make logs` | 서비스 로그 보기 |
+
+#### **빌드 문제 해결**
+
+**코드 변경사항이 적용되지 않을 때:**
+```bash
+# 1. 컨테이너가 이전 이미지를 사용하는지 확인
+docker ps
+
+# 2. 강제 재빌드 및 재시작
+make down
+docker compose build --no-cache
+make up
+
+# 3. 또는 편리한 명령어 사용
+make up-build
+```
+
+**TypeScript/ESLint 오류:**
+```bash
+# 로컬에서 프론트엔드 빌드하여 오류 확인
+cd next-connect-ui
+npm run build
+```
+
+**백엔드 빌드 문제:**
+```bash
+# 백엔드 로그 확인
+docker logs langconnect-api
+```
 
 ## 🤖 MCP 통합
 

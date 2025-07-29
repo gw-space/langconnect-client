@@ -5,7 +5,7 @@ import { uploadFormData } from "@/lib/api"
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const { searchParams } = new URL(request.url)
-  const limit = searchParams.get('limit') || '10'
+  const limit = searchParams.get('limit') || '3000'
   const offset = searchParams.get('offset') || '0'
     
   try {

@@ -203,7 +203,7 @@ async def documents_create(
 async def documents_list(
     user: Annotated[AuthenticatedUser, Depends(resolve_user)],
     collection_id: UUID,
-    limit: int = Query(10, ge=1, le=100),
+    limit: int = Query(10, ge=1, le=3000),
     offset: int = Query(0, ge=0),
 ):
     """Lists documents within a specific collection."""
@@ -280,12 +280,25 @@ async def documents_search(
 async def document_groups_list(
     user: Annotated[AuthenticatedUser, Depends(resolve_user)],
     collection_id: UUID,
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
     """Lists document groups (original files) within a specific collection, aggregated by file_id."""
-    collection = Collection(
-        collection_id=str(collection_id),
-        user_id=user.identity,
-    )
-    return await collection.aggregate_document_groups(limit=limit, offset=offset)
+    try:
+        logger.info(
+            f"Document groups request - collection_id: {collection_id}, user_id: {user.identity}, limit: {limit}, offset: {offset}"
+        )
+
+        collection = Collection(
+            collection_id=str(collection_id),
+            user_id=user.identity,
+        )
+
+        result = await collection.aggregate_document_groups(limit=limit, offset=offset)
+        logger.info(f"Document groups result count: {len(result)}")
+        return result
+
+    except Exception as e:
+        logger.error(f"Error in document_groups_list: {type(e).__name__}: {str(e)}")
+        logger.error(f"Error details: {e.__dict__}")
+        raise

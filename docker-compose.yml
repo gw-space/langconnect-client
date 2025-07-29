@@ -70,6 +70,7 @@ services:
       - api
     ports:
       - "3001:3000"
+
     env_file:
       - .env
     environment:
