@@ -313,17 +313,33 @@ async def update_document_verification(
 ):
     """Update document verification status"""
     try:
-        verified = verification_data.get("verified")
-        if not isinstance(verified, bool):
-            raise HTTPException(status_code=400, detail="verified must be a boolean")
-
-        # Update document metadata
-        success = await update_document_metadata(
-            user=user,
-            collection_id=str(collection_id),
-            document_id=document_id,
-            metadata_update={"verified": verified},
+        logger.info(
+            f"Updating verification for document {document_id} in collection {collection_id}"
         )
+        logger.info(f"Verification data: {verification_data}")
+
+        verified = verification_data.get("verified")
+        logger.info(f"Original verified value: {verified} (type: {type(verified)})")
+
+        # Convert to boolean if it's not already
+        if isinstance(verified, str):
+            verified = verified.lower() in ("true", "1", "yes", "on")
+        elif isinstance(verified, int):
+            verified = bool(verified)
+        elif not isinstance(verified, bool):
+            verified = bool(verified)
+
+        logger.info(f"Converted verified value: {verified} (type: {type(verified)})")
+
+        # Update document metadata directly
+        collection = Collection(
+            collection_id=str(collection_id),
+            user_id=user.identity,
+        )
+
+        logger.info(f"Calling update_document with: {{'verified': {verified}}}")
+        success = await collection.update_document(document_id, {"verified": verified})
+        logger.info(f"Update result: {success}")
 
         if not success:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -331,34 +347,6 @@ async def update_document_verification(
         return {"success": True, "message": "Verification status updated successfully"}
     except Exception as e:
         logger.error(f"Error updating verification status: {e}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error details: {e.__dict__}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
-
-async def update_document_metadata(
-    user: AuthenticatedUser, collection_id: str, document_id: str, metadata_update: dict
-) -> bool:
-    """Update document metadata"""
-    try:
-        collection = Collection(
-            collection_id=collection_id,
-            user_id=user.identity,
-        )
-
-        # Get current document
-        result = await collection.get_document(document_id)
-
-        if not result:
-            return False
-
-        current_metadata = result.metadata or {}
-
-        # Update metadata
-        updated_metadata = {**current_metadata, **metadata_update}
-
-        # Update document
-        await collection.update_document(document_id, {"metadata": updated_metadata})
-
-        return True
-    except Exception as e:
-        logger.error(f"Error updating document metadata: {e}")
-        return False

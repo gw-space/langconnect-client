@@ -77,6 +77,12 @@ export default function DocumentsPage() {
     return filterDocumentsBySource(docs, selectedSources)
   }, [activeTab, chunks, documents, selectedSources])
 
+  // Get current selected collection object
+  const currentCollection = useMemo(() => 
+    collections.find(c => c.uuid === selectedCollection) || null, 
+    [collections, selectedCollection]
+  )
+
   // Pagination
   const itemsPerPage = 10
   const { 
@@ -411,6 +417,8 @@ export default function DocumentsPage() {
                       onGoToNextPage={goToNextChunksPage}
                       totalCount={filteredDocuments.length}
                       onUpload={() => setShowUploadModal(true)}
+                      selectedCollection={currentCollection}
+                      onRefresh={handleRefresh}
                     />
                   </TabsContent>
                 </Tabs>

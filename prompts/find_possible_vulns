@@ -1,6 +1,8 @@
 Mobile Vulnerabilities collection의 모든 documents에 대해서(list documents할때 limit을 1000으로 호출) 각각, 3GPP Specification collection과 인터넷 정보도 참조하여 3GPP Specification에서 유발될 만한 새로운 possible vulnerabilities들이 있다고 판단되면(해당 부분에서 특별한 취약점으로 볼만한 내용이 없으면 패스해도됨), attack feasivility를 세심하게 판단하여(1점부터 10점까지 점수를 매기고) Possible Vulnerabilities collection에 다음과 같은 metadata와 content 예시와 같은 구조를 사용하여 enable_chunking:false로 넣어줘. metadata와 content의 항목을 수정하면 안돼.
-이미 Possible Vulnerabilities collection에 동일한 내용이 있으면 추가하지마.
+add_document전에 possible vulnerabilties collection에 이미 동일 내용이 없을때만 집어넣어
 
+
+아래의 metadata와 content의 요소들은 유지하되 내용은 맞게 수정해서 집어넣어야됨.
 [metadata]
 severity:high
 spec_reference:TS 24.008, TS 36.413
@@ -60,4 +62,4 @@ The specifications require complex security key derivation during inter-system h
 - Alert on cryptographic anomalies during handovers
 
 **Attack Feasibility:**
-- Evaluation of the practical applicability of this vulnerability
+- Evaluation of the practical applicability of this vulnerability carefully

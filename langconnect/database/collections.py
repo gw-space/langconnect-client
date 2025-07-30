@@ -453,11 +453,11 @@ class Collection:
         async with get_db_connection() as conn:
             row = await conn.fetchrow(
                 """
-                SELECT e.uuid, e.document, e.cmetadata
+                SELECT e.id, e.document, e.cmetadata
                   FROM langchain_pg_embedding e
                   JOIN langchain_pg_collection c
                     ON e.collection_id = c.uuid
-                 WHERE e.uuid = $1
+                 WHERE e.id = $1
                    AND c.cmetadata->>'owner_id' = $2
                    AND c.uuid = $3
                 """,
@@ -470,7 +470,7 @@ class Collection:
 
         metadata = json.loads(row["cmetadata"]) if row["cmetadata"] else {}
         return {
-            "id": str(row["uuid"]),
+            "id": str(row["id"]),
             "content": row["document"],
             "metadata": metadata,
         }
@@ -485,7 +485,7 @@ class Collection:
                   FROM langchain_pg_embedding e
                   JOIN langchain_pg_collection c
                     ON e.collection_id = c.uuid
-                 WHERE e.uuid = $1
+                 WHERE e.id = $1
                    AND c.cmetadata->>'owner_id' = $2
                    AND c.uuid = $3
                 """,
@@ -508,7 +508,7 @@ class Collection:
                 """
                 UPDATE langchain_pg_embedding
                    SET cmetadata = $4
-                 WHERE uuid = $1
+                 WHERE id = $1
                    AND collection_id = $2
                    AND EXISTS (
                        SELECT 1 FROM langchain_pg_collection c

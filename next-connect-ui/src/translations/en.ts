@@ -121,7 +121,8 @@ export const en = {
       content: 'Content',
       chunks: 'Chunks',
       characters: 'Characters',
-      timestamp: 'Timestamp'
+      timestamp: 'Timestamp',
+      verified: 'Verified'
     },
     modal: {
       uploadTitle: 'Upload Document',

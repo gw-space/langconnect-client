@@ -24,3 +24,28 @@ export async function DELETE(
     }, { status: 500 })
   }
 }
+
+export async function PATCH(
+  request: Request, 
+  { params }: { params: Promise<{ id: string; documentId: string }> }
+) {
+  const { id, documentId } = await params
+  
+  try {
+    const body = await request.json()
+    
+    // Call backend API for document metadata update
+    const response = await serverFetchAPI(`/collections/${id}/documents/${documentId}/verification`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    })
+
+    return NextResponse.json({ success: true, data: response }, { status: 200 })
+  } catch (error: any) {
+    console.error('Failed to update document:', error)
+    return NextResponse.json({ 
+      success: false, 
+      message: error.message || 'Failed to update document' 
+    }, { status: 500 })
+  }
+}

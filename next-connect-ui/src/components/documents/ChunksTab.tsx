@@ -1,14 +1,18 @@
 'use client'
 
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Document } from '@/types/document'
+import { Collection } from '@/types/collection'
 import { useTranslation } from '@/hooks/use-translation'
 import { FilterControls } from './FilterControls'
 import { Archive } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface ChunksTabProps {
   loadingChunks: boolean
@@ -31,6 +35,8 @@ interface ChunksTabProps {
   onGoToNextPage: () => void
   totalCount: number
   onUpload: () => void
+  selectedCollection: Collection | null
+  onRefresh: () => void
 }
 
 export const ChunksTab = ({
@@ -53,9 +59,49 @@ export const ChunksTab = ({
   onGoToPreviousPage,
   onGoToNextPage,
   totalCount,
-  onUpload
+  onUpload,
+  selectedCollection,
+  onRefresh
 }: ChunksTabProps) => {
   const { t } = useTranslation()
+  const [updatingVerified, setUpdatingVerified] = useState<string | null>(null)
+
+  // Check if collection has verify_checkbox enabled
+  const hasVerifyCheckbox = selectedCollection?.metadata?.verify_checkbox === true
+
+  // Calculate verified chunks count
+  const verifiedChunksCount = hasVerifyCheckbox 
+    ? filteredDocuments.filter(doc => doc.metadata?.verified === true).length 
+    : 0
+
+  const handleVerifiedChange = async (documentId: string, verified: boolean) => {
+    if (!selectedCollection) return
+
+    setUpdatingVerified(documentId)
+    try {
+      const response = await fetch(`/api/collections/${selectedCollection.uuid}/documents/${documentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ verified }),
+      })
+
+      const result = await response.json()
+      if (!result.success) {
+        toast.error('Failed to update verification status')
+        return
+      }
+
+      toast.success('Verification status updated')
+      onRefresh() // Refresh to get updated data
+    } catch (error) {
+      console.error('Failed to update verification status:', error)
+      toast.error('Failed to update verification status')
+    } finally {
+      setUpdatingVerified(null)
+    }
+  }
 
   if (loadingChunks) {
     return (
@@ -87,6 +133,24 @@ export const ChunksTab = ({
 
   return (
     <>
+      {/* Verification Statistics */}
+      {hasVerifyCheckbox && (
+        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-center gap-2 text-sm">
+            <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-blue-800 dark:text-blue-200 font-medium">
+              Verification Status:
+            </span>
+            <span className="text-blue-600 dark:text-blue-400">
+              {verifiedChunksCount} of {totalCount} chunks verified
+            </span>
+            <span className="text-blue-500 dark:text-blue-300">
+              ({Math.round((verifiedChunksCount / totalCount) * 100)}%)
+            </span>
+          </div>
+        </div>
+      )}
+
       <FilterControls 
         availableSources={availableSources}
         selectedSources={selectedSources}
@@ -120,6 +184,11 @@ export const ChunksTab = ({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 {t('documents.columns.timestamp')}
               </th>
+              {hasVerifyCheckbox && (
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  {t('documents.columns.verified')}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -134,28 +203,42 @@ export const ChunksTab = ({
                   />
                 </td>
                 <td className="px-4 py-4">
-                  <Popover open={openSourcePopovers.has(doc.id)} onOpenChange={(open) => onToggleSourcePopover(doc.id, open)}>
-                    <PopoverTrigger asChild>
+                  <Dialog open={openSourcePopovers.has(doc.id)} onOpenChange={(open) => onToggleSourcePopover(doc.id, open)}>
+                    <DialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-auto p-0 text-left">
                         <span className="text-sm text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
                           {doc.metadata?.source || 'N/A'}
                         </span>
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      <div className="space-y-2">
-                        <h4 className="font-medium">Source Details</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">{doc.metadata?.source || 'N/A'}</p>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          <div><strong>File ID:</strong> {doc.metadata?.file_id || 'N/A'}</div>
-                          <div><strong>Characters:</strong> {doc.content.length.toLocaleString()}</div>
-                          <div><strong>Timestamp:</strong> {doc.metadata?.timestamp || doc.metadata?.created_at ? 
-                            new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
-                            'N/A'}</div>
+                    </DialogTrigger>
+                    <DialogContent className="w-[500px] max-w-[90vw]">
+                      <DialogHeader>
+                        <DialogTitle>Source Details</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Source:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{doc.metadata?.source || 'N/A'}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">File ID:</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-mono">{doc.metadata?.file_id || 'N/A'}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Characters:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{doc.content.length.toLocaleString()}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
+                          <span className="text-gray-900 dark:text-gray-100">
+                            {doc.metadata?.timestamp || doc.metadata?.created_at ? 
+                              new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
+                              'N/A'}
+                          </span>
                         </div>
                       </div>
-                    </PopoverContent>
-                  </Popover>
+                    </DialogContent>
+                  </Dialog>
                 </td>
                 <td className="px-4 py-4">
                   <span className="text-sm text-gray-900 dark:text-gray-100 font-mono">
@@ -163,84 +246,82 @@ export const ChunksTab = ({
                   </span>
                 </td>
                 <td className="px-4 py-4">
-                  <Popover open={openPopovers.has(doc.id)} onOpenChange={(open) => onTogglePopover(doc.id, open)}>
-                    <PopoverTrigger asChild>
+                  <Dialog open={openPopovers.has(doc.id)} onOpenChange={(open) => onTogglePopover(doc.id, open)}>
+                    <DialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-auto p-0 text-left max-w-md">
                         <span className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
                           {doc.content}
                         </span>
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[600px] max-w-[90vw]">
-                      <div className="p-4">
-                        <h4 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Chunk Details</h4>
-                        <div className="space-y-3 text-base mb-4">
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">ID:</span>
-                            <span className="text-gray-900 dark:text-gray-100 font-mono text-sm">{doc.id}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Source:</span>
-                            <span className="text-gray-900 dark:text-gray-100">{doc.metadata?.source || 'N/A'}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">File ID:</span>
-                            <span className="text-gray-900 dark:text-gray-100 font-mono text-sm">{doc.metadata?.file_id || 'N/A'}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Characters:</span>
-                            <span className="text-gray-900 dark:text-gray-100">{doc.content.length.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-2">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
-                            <span className="text-gray-900 dark:text-gray-100 text-sm">
-                              {doc.metadata?.timestamp || doc.metadata?.created_at ? 
-                                new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
-                                'N/A'}
-                            </span>
-                          </div>
+                    </DialogTrigger>
+                    <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh]">
+                      <DialogHeader>
+                        <DialogTitle>Chunk Details</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">ID:</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-mono">{doc.id}</span>
                         </div>
-                        
-                        <Tabs defaultValue="content" className="w-full">
-                          <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="content">Content</TabsTrigger>
-                            <TabsTrigger value="metadata">Metadata</TabsTrigger>
-                          </TabsList>
-                          <TabsContent value="content" className="mt-4">
-                            <ScrollArea className="h-[400px] max-h-[60vh]">
-                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                <div className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-7 font-normal">
-                                  {doc.content}
-                                </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Source:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{doc.metadata?.source || 'N/A'}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">File ID:</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-mono">{doc.metadata?.file_id || 'N/A'}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Characters:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{doc.content.length.toLocaleString()}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
+                          <span className="text-gray-900 dark:text-gray-100">
+                            {doc.metadata?.timestamp || doc.metadata?.created_at ? 
+                              new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
+                              'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <Tabs defaultValue="content" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="content">Content</TabsTrigger>
+                          <TabsTrigger value="metadata">Metadata</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="content" className="mt-4">
+                          <ScrollArea className="h-[400px] max-h-[60vh]">
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                              <div className="text-base text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-7 font-normal">
+                                {doc.content}
                               </div>
-                            </ScrollArea>
-                          </TabsContent>
-                          <TabsContent value="metadata" className="mt-4">
+                            </div>
+                          </ScrollArea>
+                        </TabsContent>
+                                                  <TabsContent value="metadata" className="mt-4">
                             <ScrollArea className="h-[400px] max-h-[60vh]">
                               {doc.metadata && Object.keys(doc.metadata).length > 0 ? (
-                                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                  <div className="space-y-3 text-base">
-                                    {Object.entries(doc.metadata).map(([key, value]) => (
-                                      <div key={key} className="py-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0">
-                                        <div className="font-medium text-gray-700 dark:text-gray-300 mb-1">{key}</div>
-                                        <div className="text-gray-900 dark:text-gray-100 break-words font-mono text-sm bg-white dark:bg-gray-900 p-2 rounded border">
-                                          {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
+                                <div className="space-y-2">
+                                  {Object.entries(doc.metadata).map(([key, value]) => (
+                                    <div key={key} className="text-sm flex justify-between py-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0">
+                                      <span className="font-medium text-gray-700 dark:text-gray-300">{key}:</span>
+                                      <span className="text-gray-900 dark:text-gray-100 font-mono break-all">
+                                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                      </span>
+                                    </div>
+                                  ))}
                                 </div>
                               ) : (
-                                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400">
+                                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
                                   No metadata available
                                 </div>
                               )}
                             </ScrollArea>
                           </TabsContent>
-                        </Tabs>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
+                      </Tabs>
+                    </DialogContent>
+                  </Dialog>
                 </td>
                 <td className="px-4 py-4">
                   <span className="text-sm text-gray-900 dark:text-gray-100">
@@ -248,12 +329,29 @@ export const ChunksTab = ({
                   </span>
                 </td>
                 <td className="px-4 py-4">
-                  <div className="text-xs text-gray-500 dark:text-gray-300">
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
                     {doc.metadata?.timestamp || doc.metadata?.created_at ? 
                       new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
                       'N/A'}
-                  </div>
+                  </span>
                 </td>
+                {hasVerifyCheckbox && (
+                  <td className="px-4 py-4">
+                    <div className="flex items-center justify-center">
+                      {updatingVerified === doc.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={doc.metadata?.verified === true}
+                          onChange={(e) => handleVerifiedChange(doc.id, e.target.checked)}
+                          className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
+                          title="Mark as verified"
+                        />
+                      )}
+                    </div>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

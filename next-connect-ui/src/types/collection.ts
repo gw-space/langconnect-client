@@ -1,7 +1,9 @@
 export interface Collection {
   uuid: string
   name: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, any> & {
+    verify_checkbox?: boolean
+  }
   document_count?: number
   chunk_count?: number
 }

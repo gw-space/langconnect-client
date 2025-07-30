@@ -5,6 +5,7 @@ export interface Document {
     source?: string
     file_id?: string
     timestamp?: string
+    verified?: boolean
     [key: string]: any
   }
 }

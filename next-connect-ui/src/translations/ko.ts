@@ -121,7 +121,8 @@ export const ko = {
       content: '내용',
       chunks: '청크',
       characters: '문자 수',
-      timestamp: '타임스탬프'
+      timestamp: '타임스탬프',
+      verified: '검증됨'
     },
     modal: {
       uploadTitle: '문서 업로드',

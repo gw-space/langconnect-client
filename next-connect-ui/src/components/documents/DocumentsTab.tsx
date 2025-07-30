@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DocumentGroup } from '@/types/document'
@@ -90,26 +91,44 @@ export const DocumentsTab = ({
               </td>
               <td className="px-4 py-4">
                 <div className="flex items-center gap-2">
-                  <Popover open={openSourcePopovers.has(group.file_id)} onOpenChange={(open) => onToggleSourcePopover(group.file_id, open)}>
-                    <PopoverTrigger asChild>
+                  <Dialog open={openSourcePopovers.has(group.file_id)} onOpenChange={(open) => onToggleSourcePopover(group.file_id, open)}>
+                    <DialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-auto p-0 text-left">
                         <span className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
                           {group.source}
                         </span>
                       </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80">
-                      <div className="space-y-2">
-                        <h4 className="font-medium">Source Details</h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">{group.source}</p>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          <div><strong>File ID:</strong> {group.file_id}</div>
-                          <div><strong>Chunks:</strong> {group.chunks?.length || 0}</div>
-                          <div><strong>Characters:</strong> {group.total_chars.toLocaleString()}</div>
+                    </DialogTrigger>
+                    <DialogContent className="w-[500px] max-w-[90vw]">
+                      <DialogHeader>
+                        <DialogTitle>Source Details</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Source:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{group.source}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">File ID:</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-mono">{group.file_id}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Chunks:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{group.chunks?.length || 0}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Characters:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{group.total_chars.toLocaleString()}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
+                          <span className="text-gray-900 dark:text-gray-100">
+                            {group.timestamp && group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}
+                          </span>
                         </div>
                       </div>
-                    </PopoverContent>
-                  </Popover>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </td>
               <td className="px-4 py-4">
@@ -118,8 +137,8 @@ export const DocumentsTab = ({
                 </span>
               </td>
               <td className="px-4 py-4">
-                <Popover open={openPopovers.has(group.file_id)} onOpenChange={(open) => onTogglePopover(group.file_id, open)}>
-                  <PopoverTrigger asChild>
+                <Dialog open={openPopovers.has(group.file_id)} onOpenChange={(open) => onTogglePopover(group.file_id, open)}>
+                  <DialogTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-auto p-0 text-left max-w-md">
                       <span className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
                         {group.chunks && group.chunks.length > 0 
@@ -127,67 +146,67 @@ export const DocumentsTab = ({
                           : 'No content available'}
                       </span>
                     </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[600px] max-w-[90vw]">
-                    <div className="p-4">
-                      <h4 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Document Details</h4>
-                      <div className="space-y-3 text-base mb-4">
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">Source:</span>
-                          <span className="text-gray-900 dark:text-gray-100">{group.source}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">File ID:</span>
-                          <span className="text-gray-900 dark:text-gray-100 font-mono text-sm">{group.file_id}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">Chunks:</span>
-                          <span className="text-gray-900 dark:text-gray-100">{group.chunks?.length || 0}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">Characters:</span>
-                          <span className="text-gray-900 dark:text-gray-100">{group.total_chars.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center py-2">
-                          <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
-                          <span className="text-gray-900 dark:text-gray-100 text-sm">
-                            {group.timestamp && group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}
-                          </span>
-                        </div>
+                  </DialogTrigger>
+                  <DialogContent className="w-[800px] max-w-[90vw] max-h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>Document Details</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-2 mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <div className="text-sm flex justify-between">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">Source:</span>
+                        <span className="text-gray-900 dark:text-gray-100">{group.source}</span>
                       </div>
-                      
-                      <Tabs defaultValue="chunks" className="w-full">
-                        <TabsList className="grid w-full grid-cols-1">
-                          <TabsTrigger value="chunks">Chunks Preview</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="chunks" className="mt-4">
-                          <ScrollArea className="h-[400px] max-h-[60vh]">
-                            <div className="space-y-4">
-                              {group.chunks?.slice(0, 3).map((chunk, index) => (
-                                <div key={chunk.id} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                                  <div className="font-medium mb-2 text-gray-900 dark:text-gray-100">Chunk {index + 1}</div>
-                                  <div className="text-base text-gray-700 dark:text-gray-200 whitespace-pre-wrap leading-6 line-clamp-4">
-                                    {chunk.content}
-                                  </div>
-                                </div>
-                              )) || []}
-                              {group.chunks && group.chunks.length > 3 && (
-                                <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
-                                  ... and {group.chunks.length - 3} more chunks
-                                </div>
-                              )}
-                              {(!group.chunks || group.chunks.length === 0) && (
-                                <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400">
-                                  No chunks available
-                                </div>
-                              )}
-                            </div>
-                          </ScrollArea>
-                        </TabsContent>
-                      </Tabs>
+                      <div className="text-sm flex justify-between">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">File ID:</span>
+                        <span className="text-gray-900 dark:text-gray-100 font-mono">{group.file_id}</span>
+                      </div>
+                      <div className="text-sm flex justify-between">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">Chunks:</span>
+                        <span className="text-gray-900 dark:text-gray-100">{group.chunks?.length || 0}</span>
+                      </div>
+                      <div className="text-sm flex justify-between">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">Characters:</span>
+                        <span className="text-gray-900 dark:text-gray-100">{group.total_chars.toLocaleString()}</span>
+                      </div>
+                      <div className="text-sm flex justify-between">
+                        <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
+                        <span className="text-gray-900 dark:text-gray-100">
+                          {group.timestamp && group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
                     </div>
-                  </PopoverContent>
-                </Popover>
+                    
+                    <Tabs defaultValue="chunks" className="w-full">
+                      <TabsList className="grid w-full grid-cols-1">
+                        <TabsTrigger value="chunks">Chunks Preview</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="chunks" className="mt-4">
+                        <ScrollArea className="h-[400px] max-h-[60vh]">
+                          <div className="space-y-4">
+                            {group.chunks?.slice(0, 3).map((chunk, index) => (
+                              <div key={chunk.id} className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div className="font-medium mb-2 text-gray-900 dark:text-gray-100">Chunk {index + 1}</div>
+                                <div className="text-base text-gray-700 dark:text-gray-200 whitespace-pre-wrap leading-6 line-clamp-4">
+                                  {chunk.content}
+                                </div>
+                              </div>
+                            )) || []}
+                            {group.chunks && group.chunks.length > 3 && (
+                              <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
+                                ... and {group.chunks.length - 3} more chunks
+                              </div>
+                            )}
+                            {(!group.chunks || group.chunks.length === 0) && (
+                              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-center text-gray-500 dark:text-gray-400">
+                                No chunks available
+                              </div>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                    </Tabs>
+                  </DialogContent>
+                </Dialog>
               </td>
               <td className="px-4 py-4">
                 <span className="text-sm text-gray-900 dark:text-gray-100">
