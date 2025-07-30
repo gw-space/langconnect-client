@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  nextjs-dev:
+    build:
+      context: ./next-connect-ui
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./next-connect-ui:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - API_URL=http://langconnect:8080
+      - NEXTAUTH_URL=http://localhost:3001
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - ALLOW_ORIGINS=["http://localhost:3000","http://localhost:3001","http://localhost:8000","http://localhost","http://127.0.0.1:3000","http://127.0.0.1:3001","http://127.0.0.1:8000","http://127.0.0.1"]
+    depends_on:
+      - postgres
+      - langconnect
+
+  langconnect:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8080"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://gwyoon:gwyoon@postgres:5432/gwyoon_db
+      - ALLOW_ORIGINS=["http://localhost:3000","http://localhost:3001","http://localhost:8000","http://localhost","http://127.0.0.1:3000","http://127.0.0.1:3001","http://127.0.0.1:8000","http://127.0.0.1"]
+    depends_on:
+      - postgres
+    volumes:
+      - ./langconnect:/app/langconnect
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_USER=gwyoon
+      - POSTGRES_PASSWORD=gwyoon
+      - POSTGRES_DB=gwyoon_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
+volumes:
+  postgres_data: 

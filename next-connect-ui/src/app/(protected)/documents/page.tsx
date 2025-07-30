@@ -38,6 +38,8 @@ export default function DocumentsPage() {
   const [selectedCollection, setSelectedCollection] = useState<string>('')
   const [documents, setDocuments] = useState<Document[]>([])
   const [documentGroups, setDocumentGroups] = useState<DocumentGroup[]>([])
+  const [chunks, setChunks] = useState<Document[]>([])
+  const [chunksLoaded, setChunksLoaded] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [loadingChunks, setLoadingChunks] = useState(false)
@@ -145,84 +147,143 @@ export default function DocumentsPage() {
     fetchCollections()
   }, [fetchCollections])
 
+
+
   useEffect(() => {
     if (selectedCollection) {
       fetchDocuments()
-      setChunksLoaded(false) // Reset chunks loaded state when collection changes
+      // 새로운 컬렉션 선택 시 청크 캐시 초기화
+      setChunksLoaded(new Set())
     }
   }, [selectedCollection, fetchDocuments])
 
-  // Load chunks only when switching to chunks tab
-  const [chunksLoaded, setChunksLoaded] = useState(false)
-  
-  const loadChunks = useCallback(async () => {
-    if (!selectedCollection || chunksLoaded) return
-
-    try {
-      setLoadingChunks(true)
-      let allDocuments: Document[] = []
-      const limit = 3000 // 안전하고 효율적인 배치 사이즈
-
-      // 병렬 요청으로 성능 개선
-      const fetchBatch = async (batchOffset: number) => {
-        const response = await fetch(
-          `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${batchOffset}`
-        )
-        const res = await response.json()
-        
-        if (!res.success) {
-          throw new Error('Failed to fetch batch')
-        }
-        
-        return res.data || []
-      }
-
-      // 첫 번째 배치로 전체 개수 확인
-      const firstBatch = await fetchBatch(0)
-      allDocuments = firstBatch
-      
-      if (firstBatch.length === limit) {
-        // 더 많은 데이터가 있는 경우, 병렬로 나머지 배치들을 가져옴
-        const remainingBatches = []
-        let currentOffset = limit
-        
-        while (true) {
-          const batch = await fetchBatch(currentOffset)
-          if (batch.length === 0) break
-          
-          allDocuments = allDocuments.concat(batch)
-          currentOffset += limit
-          
-          if (batch.length < limit) break
-        }
-      }
-
-      setDocuments(allDocuments)
-      setTotalItems(allDocuments.length)
-      setChunksLoaded(true)
-      
-      toast.success(t('documents.messages.loadSuccess', { count: allDocuments.length }))
-      
-    } catch (error) {
-      console.error('Failed to load chunks:', error)
-      toast.error(t('common.error'), {
-        description: t('documents.messages.fetchError')
-      })
-    } finally {
-      setLoadingChunks(false)
-    }
-  }, [selectedCollection, chunksLoaded, t])
-
-  // Load chunks when switching to chunks tab
+  // Load chunks when switching to chunks tab or when collection changes in chunks tab
   useEffect(() => {
-    if (activeTab === 'chunks' && selectedCollection && !chunksLoaded) {
-      loadChunks()
+    if (activeTab === 'chunks' && selectedCollection) {
+      // 이미 로드된 컬렉션이면 다시 로드하지 않음
+      if (chunksLoaded.has(selectedCollection)) {
+        return
+      }
+
+      const loadChunksForCollection = async () => {
+        try {
+          setLoadingChunks(true)
+          let allChunks: Document[] = []
+          const limit = 3000
+
+          const fetchBatch = async (batchOffset: number) => {
+            const response = await fetch(
+              `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${batchOffset}`
+            )
+            const res = await response.json()
+            
+            if (!res.success) {
+              throw new Error('Failed to fetch batch')
+            }
+            
+            return res.data || []
+          }
+
+          const firstBatch = await fetchBatch(0)
+          allChunks = firstBatch
+          
+          if (firstBatch.length === limit) {
+            let currentOffset = limit
+            
+            while (true) {
+              const batch = await fetchBatch(currentOffset)
+              if (batch.length === 0) break
+              
+              allChunks = allChunks.concat(batch)
+              currentOffset += limit
+              
+              if (batch.length < limit) break
+            }
+          }
+
+          setChunks(allChunks)
+          setTotalItems(allChunks.length)
+          setChunksLoaded(prev => new Set([...prev, selectedCollection]))
+          
+          toast.success(t('documents.messages.loadSuccess', { count: allChunks.length }))
+          
+        } catch (error) {
+          console.error('Failed to load chunks:', error)
+          toast.error(t('common.error'), {
+            description: t('documents.messages.fetchError')
+          })
+        } finally {
+          setLoadingChunks(false)
+        }
+      }
+
+      loadChunksForCollection()
     }
-  }, [activeTab, selectedCollection, chunksLoaded, loadChunks])
+  }, [activeTab, selectedCollection, chunksLoaded, t])
 
   const handleRefresh = () => {
     setRefreshing(true)
     fetchDocuments()
+    
+    // 모든 탭에서 리프레시 시 청크 캐시 초기화 및 다시 로드
+    if (selectedCollection) {
+      setChunksLoaded(new Set())
+      
+      // 즉시 청크 다시 로드
+      const loadChunksForCollection = async () => {
+        try {
+          setLoadingChunks(true)
+          let allChunks: Document[] = []
+          const limit = 3000
+
+          const fetchBatch = async (batchOffset: number) => {
+            const response = await fetch(
+              `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${batchOffset}`
+            )
+            const res = await response.json()
+            
+            if (!res.success) {
+              throw new Error('Failed to fetch batch')
+            }
+            
+            return res.data || []
+          }
+
+          const firstBatch = await fetchBatch(0)
+          allChunks = firstBatch
+          
+          if (firstBatch.length === limit) {
+            let currentOffset = limit
+            
+            while (true) {
+              const batch = await fetchBatch(currentOffset)
+              if (batch.length === 0) break
+              
+              allChunks = allChunks.concat(batch)
+              currentOffset += limit
+              
+              if (batch.length < limit) break
+            }
+          }
+
+          setChunks(allChunks)
+          setTotalItems(allChunks.length)
+          setChunksLoaded(prev => new Set([...prev, selectedCollection]))
+          
+          toast.success(t('documents.messages.loadSuccess', { count: allChunks.length }))
+          
+        } catch (error) {
+          console.error('Failed to load chunks:', error)
+          toast.error(t('common.error'), {
+            description: t('documents.messages.fetchError')
+          })
+        } finally {
+          setLoadingChunks(false)
+        }
+      }
+
+      loadChunksForCollection()
+    }
   }
 
   const handleDeleteSelected = useCallback(async () => {
@@ -316,7 +377,7 @@ export default function DocumentsPage() {
     selectedSources.includes(group.source)
   )
   
-  const filteredDocuments = documents.filter(doc => 
+  const filteredDocuments = (activeTab === 'chunks' ? chunks : documents).filter(doc => 
     selectedSources.includes(doc.metadata?.source || 'N/A')
   )
   
@@ -344,8 +405,8 @@ export default function DocumentsPage() {
 
   // Statistics calculation
   const totalDocuments = documentGroups.length
-  const totalChunks = documentGroups.reduce((sum, group) => sum + group.chunk_count, 0)
-  const totalCharacters = documentGroups.reduce((sum, group) => sum + group.total_chars, 0)
+  const totalChunks = activeTab === 'chunks' ? chunks.length : documentGroups.reduce((sum, group) => sum + group.chunk_count, 0)
+  const totalCharacters = activeTab === 'chunks' ? chunks.reduce((sum, doc) => sum + doc.content.length, 0) : documentGroups.reduce((sum, group) => sum + group.total_chars, 0)
   
 
 

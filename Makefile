@@ -1,4 +1,4 @@
-.PHONY: build up down restart mcp test
+.PHONY: build up down restart mcp test dev up-dev down-dev
 
 build:
 	@echo "🔨 Building Next.js application..."
@@ -51,4 +51,29 @@ TEST_FILE ?= tests/unit_tests
 
 test:
 	./run_tests.sh $(TEST_FILE)
+
+dev:
+	@echo "🚀 Starting LangConnect in development mode..."
+	@docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Development server started successfully!"
+	@echo "📌 Access points:"
+	@echo "   - API Server: http://localhost:8000"
+	@echo "   - API Docs: http://localhost:8000/docs"
+	@echo "   - Next.js UI: http://localhost:3001 (with hot reload)"
+	@echo "   - PostgreSQL: localhost:5432"
+
+up-dev:
+	@echo "🚀 Starting LangConnect in development mode..."
+	@docker compose -f docker-compose.dev.yml up -d
+	@echo "✅ Development server started successfully!"
+	@echo "📌 Access points:"
+	@echo "   - API Server: http://localhost:8000"
+	@echo "   - API Docs: http://localhost:8000/docs"
+	@echo "   - Next.js UI: http://localhost:3001 (with hot reload)"
+	@echo "   - PostgreSQL: localhost:5432"
+
+down-dev:
+	@echo "🛑 Stopping LangConnect development server..."
+	@docker compose -f docker-compose.dev.yml down
+	@echo "✅ Development server stopped successfully!"
 

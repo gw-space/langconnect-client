@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Plus, Trash2, Folder, FileText, Loader2, Database, FolderOpen, Archive, BookOpen, Info, X } from 'lucide-react'
+import { RefreshCw, Plus, Trash2, Folder, FileText, Loader2, Database, FolderOpen, Archive, BookOpen, Info, X, Edit } from 'lucide-react'
 import { CollectionWithStats, Collection } from '@/types/collection'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { CreateCollectionModal } from '@/components/modals/create-collection-modal'
+import { EditCollectionModal } from '@/components/modals/edit-collection-modal'
 import { useTranslation } from '@/hooks/use-translation'
 
 export default function CollectionsPage() {
@@ -31,6 +32,10 @@ export default function CollectionsPage() {
   
   // Create modal state
   const [showCreateModal, setShowCreateModal] = useState(false)
+  
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
   
   // Selection states
   const [selectedCollections, setSelectedCollections] = useState<string[]>([])
@@ -420,13 +425,28 @@ export default function CollectionsPage() {
                                           <Folder className="h-5 w-5 text-blue-500" />
                                           {collection.name}
                                         </h3>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => togglePopover(collection.uuid, false)}
-                                        >
-                                          <X className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex items-center gap-2">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                              setEditingCollection(collection)
+                                              setShowEditModal(true)
+                                              togglePopover(collection.uuid, false)
+                                            }}
+                                            className="flex items-center gap-1"
+                                          >
+                                            <Edit className="h-3 w-3" />
+                                            {t('common.edit')}
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => togglePopover(collection.uuid, false)}
+                                          >
+                                            <X className="h-4 w-4" />
+                                          </Button>
+                                        </div>
                                       </div>
                                       
                                       <div className="space-y-4">
@@ -527,6 +547,14 @@ export default function CollectionsPage() {
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
         onSuccess={fetchCollections}
+      />
+
+      {/* Edit Collection Modal */}
+      <EditCollectionModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        onSuccess={fetchCollections}
+        collection={editingCollection}
       />
     </div>
   )
