@@ -1090,18 +1090,18 @@ export default function DocumentsPage() {
                                           <ScrollArea className="h-[400px] w-full">
                                             <div className="space-y-3">
                                               <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4 space-y-3">
-                                                <div className="grid grid-cols-[140px_1fr] gap-3">
-                                                  <span className="font-medium text-sm text-gray-600 dark:text-gray-300">Document ID:</span>
-                                                  <code className="bg-white px-2 py-1 rounded font-mono text-xs text-gray-700 border">
+                                                <div className="flex flex-col sm:flex-row sm:items-start gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
+                                                  <span className="font-medium text-sm text-gray-600 dark:text-gray-300 min-w-[160px] flex-shrink-0">Document ID:</span>
+                                                  <code className="bg-white dark:bg-gray-700 px-2 py-1 rounded font-mono text-xs text-gray-700 dark:text-gray-300 border dark:border-gray-600 break-all">
                                                     {doc.id}
                                                   </code>
                                                 </div>
                                                 
                                                 {doc.metadata && Object.entries(doc.metadata).length > 0 ? (
                                                   Object.entries(doc.metadata).map(([key, value]) => (
-                                                    <div key={key} className="grid grid-cols-[140px_1fr] gap-3">
-                                                      <span className="font-medium text-sm text-gray-600 dark:text-gray-300">{key}:</span>
-                                                      <div className="text-sm text-gray-700 dark:text-gray-300">
+                                                    <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-2 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                                                      <span className="font-medium text-sm text-gray-600 dark:text-gray-300 min-w-[160px] flex-shrink-0">{key}:</span>
+                                                      <div className="text-sm text-gray-700 dark:text-gray-300 flex-1 min-w-0">
                                                         {typeof value === 'object' 
                                                           ? (
                                                             <pre className="bg-white dark:bg-gray-700 p-2 rounded border dark:border-gray-600 text-xs overflow-x-auto">
@@ -1110,11 +1110,11 @@ export default function DocumentsPage() {
                                                           )
                                                           : (key === 'timestamp' || key === 'created_at') && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)
                                                           ? (
-                                                            <span className="text-gray-700 dark:text-gray-300">
+                                                            <span className="text-gray-700 dark:text-gray-300 break-words">
                                                               {new Date(value).toLocaleString()}
                                                             </span>
                                                           )
-                                                          : <span className="break-all">{String(value)}</span>
+                                                          : <span className="break-words">{String(value)}</span>
                                                         }
                                                       </div>
                                                     </div>
