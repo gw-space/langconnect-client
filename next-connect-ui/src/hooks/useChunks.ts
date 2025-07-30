@@ -59,8 +59,6 @@ export const useChunks = (selectedCollection: string) => {
       const allChunks = batches.flat()
       setChunks(allChunks)
       setChunksLoaded(prev => new Set(prev).add(selectedCollection))
-      
-      toast.success(t('documents.messages.loadSuccess'))
     } catch (error) {
       console.error('Failed to load chunks:', error)
       toast.error(t('common.error'), {

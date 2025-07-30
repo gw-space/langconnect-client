@@ -141,12 +141,18 @@ export default function DocumentsPage() {
 
     try {
       setDeleting(true)
+      
+      // Documents 탭에서는 file_ids를, Chunks 탭에서는 document_ids를 사용
+      const requestBody = activeTab === 'documents' 
+        ? { file_ids: selectedIds }
+        : { document_ids: selectedIds }
+
       const response = await fetch(`/api/collections/${selectedCollection}/documents`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ document_ids: selectedIds }),
+        body: JSON.stringify(requestBody),
       })
 
       const res = await response.json()
