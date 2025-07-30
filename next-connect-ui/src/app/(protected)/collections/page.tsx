@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -408,99 +408,91 @@ export default function CollectionsPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Popover 
+                                <Dialog 
                                   open={openPopovers.has(collection.uuid)}
                                   onOpenChange={(isOpen) => togglePopover(collection.uuid, isOpen)}
                                 >
-                                  <PopoverTrigger asChild>
+                                  <DialogTrigger asChild>
                                     <button className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer flex items-center gap-1">
                                       {collection.name}
                                       <Info className="h-3 w-3 text-gray-400 dark:text-gray-400" />
                                     </button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-[500px] p-0" align="start">
-                                    <div className="p-4">
-                                      <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                          <Folder className="h-5 w-5 text-blue-500" />
-                                          {collection.name}
-                                        </h3>
-                                        <div className="flex items-center gap-2">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                              setEditingCollection(collection)
-                                              setShowEditModal(true)
-                                              togglePopover(collection.uuid, false)
-                                            }}
-                                            className="flex items-center gap-1"
-                                          >
-                                            <Edit className="h-3 w-3" />
-                                            {t('common.edit')}
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => togglePopover(collection.uuid, false)}
-                                          >
-                                            <X className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                      
-                                      <div className="space-y-4">
-                                        {/* 기본 정보 */}
-                                        <div>
-                                          <h4 className="font-medium text-sm text-gray-600 dark:text-gray-300 mb-2">{t('collections.popover.basicInfo')}</h4>
-                                          <div className="space-y-2 text-sm">
-                                            <div className="flex justify-between">
-                                              <span className="text-gray-500 dark:text-gray-300">UUID:</span>
-                                              <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
-                                                {collection.uuid}
-                                              </code>
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        {/* 통계 정보 */}
-                                        <div>
-                                          <h4 className="font-medium text-sm text-gray-600 dark:text-gray-300 mb-2">{t('collections.popover.statistics')}</h4>
-                                          <div className="grid grid-cols-2 gap-3">
-                                            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                                              <div className="flex items-center gap-2 mb-1">
-                                                <FileText className="h-4 w-4 text-blue-500" />
-                                                <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{t('collections.stats.documents')}</span>
-                                              </div>
-                                              <div className="text-lg font-bold text-blue-900 dark:text-blue-100">
-                                                {collection.stats.documents}
-                                              </div>
-                                            </div>
-                                            <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
-                                              <div className="flex items-center gap-2 mb-1">
-                                                <Archive className="h-4 w-4 text-purple-500" />
-                                                <span className="text-sm font-medium text-purple-700 dark:text-purple-300">{t('collections.stats.chunks')}</span>
-                                              </div>
-                                              <div className="text-lg font-bold text-purple-900 dark:text-purple-100">
-                                                {collection.stats.chunks}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-
-                                        {/* 메타데이터 */}
-                                        {collection.metadata && Object.keys(collection.metadata).length > 0 && (
-                                          <div>
-                                            <h4 className="font-medium text-sm text-gray-600 dark:text-gray-300 mb-2">{t('collections.table.metadata')}</h4>
-                                            <pre className="text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded overflow-x-auto whitespace-pre-wrap">
-                                              {JSON.stringify(collection.metadata, null, 2)}
-                                            </pre>
-                                          </div>
-                                        )}
-                                      </div>
+                                  </DialogTrigger>
+                                  <DialogContent className="w-[500px] max-w-[90vw]">
+                                    <DialogHeader>
+                                      <DialogTitle className="flex items-center gap-2">
+                                        <Folder className="h-5 w-5 text-blue-500" />
+                                        {collection.name}
+                                      </DialogTitle>
+                                    </DialogHeader>
+                                    
+                                    <div className="flex justify-end mb-4">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          setEditingCollection(collection)
+                                          setShowEditModal(true)
+                                          togglePopover(collection.uuid, false)
+                                        }}
+                                        className="flex items-center gap-1"
+                                      >
+                                        <Edit className="h-3 w-3" />
+                                        {t('common.edit')}
+                                      </Button>
                                     </div>
-                                  </PopoverContent>
-                                </Popover>
+                                    
+                                    <div className="space-y-4">
+                                      {/* 기본 정보 */}
+                                      <div>
+                                        <h4 className="font-medium text-sm text-gray-600 dark:text-gray-300 mb-2">{t('collections.popover.basicInfo')}</h4>
+                                        <div className="space-y-2 text-sm">
+                                          <div className="flex justify-between">
+                                            <span className="text-gray-500 dark:text-gray-300">UUID:</span>
+                                            <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
+                                              {collection.uuid}
+                                            </code>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* 통계 정보 */}
+                                      <div>
+                                        <h4 className="font-medium text-sm text-gray-600 dark:text-gray-300 mb-2">{t('collections.popover.statistics')}</h4>
+                                        <div className="grid grid-cols-2 gap-3">
+                                          <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <FileText className="h-4 w-4 text-blue-500" />
+                                              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">{t('collections.stats.documents')}</span>
+                                            </div>
+                                            <div className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                                              {collection.stats.documents}
+                                            </div>
+                                          </div>
+                                          <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <Archive className="h-4 w-4 text-purple-500" />
+                                              <span className="text-sm font-medium text-purple-700 dark:text-purple-300">{t('collections.stats.chunks')}</span>
+                                            </div>
+                                            <div className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                                              {collection.stats.chunks}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {/* 메타데이터 */}
+                                      {collection.metadata && Object.keys(collection.metadata).length > 0 && (
+                                        <div>
+                                          <h4 className="font-medium text-sm text-gray-600 dark:text-gray-300 mb-2">{t('collections.table.metadata')}</h4>
+                                          <pre className="text-xs bg-gray-50 dark:bg-gray-800 p-3 rounded overflow-x-auto whitespace-pre-wrap">
+                                            {JSON.stringify(collection.metadata, null, 2)}
+                                          </pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
                               </div>
                             </div>
                           </td>

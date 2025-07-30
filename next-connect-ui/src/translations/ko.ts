@@ -122,6 +122,8 @@ export const ko = {
       chunks: '청크',
       characters: '문자 수',
       timestamp: '타임스탬프',
+      severity: '심각도',
+      score: '실행 가능성',
       verified: '검증됨'
     },
     modal: {

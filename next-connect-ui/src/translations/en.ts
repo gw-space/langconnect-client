@@ -122,6 +122,8 @@ export const en = {
       chunks: 'Chunks',
       characters: 'Characters',
       timestamp: 'Timestamp',
+      severity: 'Severity',
+      score: 'Feasibility',
       verified: 'Verified'
     },
     modal: {
