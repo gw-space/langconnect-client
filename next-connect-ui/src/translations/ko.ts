@@ -15,6 +15,10 @@ export const ko = {
     selectAll: '전체 선택',
     selected: '{{count}}개 선택됨',
     total: '총 {{count}}개',
+    confirmDelete: '삭제 확인',
+    cancel: '취소',
+    deleting: '삭제 중...',
+    actions: '작업',
   },
   sidebar: {
     main: '메인',
@@ -99,7 +103,25 @@ export const ko = {
       uploadRequireFiles: '업로드할 파일을 선택하세요',
       deleteSuccess: '문서가 성공적으로 삭제되었습니다',
       deleteError: '문서 삭제 실패',
-      fetchError: '문서 조회 실패'
+      fetchError: '문서 조회 실패',
+      loadSuccess: '{{count}}개의 청크를 성공적으로 로드했습니다',
+      verificationUpdated: '확인 상태가 성공적으로 업데이트되었습니다',
+      verificationError: '확인 상태 업데이트 실패',
+      allVerified: '모든 청크가 성공적으로 확인되었습니다',
+      allUnverified: '모든 청크 확인이 해제되었습니다',
+      deleteConfirm: '선택한 {{count}}개 항목을 삭제하시겠습니까?'
+    },
+    tabs: {
+      documents: '문서',
+      chunks: '청크'
+    },
+    columns: {
+      source: '소스',
+      fileId: '파일 ID',
+      content: '내용',
+      chunks: '청크',
+      characters: '문자 수',
+      timestamp: '타임스탬프'
     },
     modal: {
       uploadTitle: '문서 업로드',

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { RefreshCw, Trash2, FileText, Loader2, Database, FolderOpen, Archive, BookOpen, Upload, File, Filter, ChevronLeft, ChevronRight, X, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -31,306 +31,146 @@ import { Collection } from '@/types/collection'
 import { Document, DocumentGroup } from '@/types/document'
 import { useTranslation } from '@/hooks/use-translation'
 
+// Custom hooks
+import { useCollections } from '@/hooks/useCollections'
+import { useDocuments } from '@/hooks/useDocuments'
+import { useChunks } from '@/hooks/useChunks'
+import { usePagination } from '@/hooks/usePagination'
+
+// Components
+import { DocumentsHeader } from '@/components/documents/DocumentsHeader'
+import { LoadingSkeleton } from '@/components/documents/LoadingSkeleton'
+import { EmptyState } from '@/components/documents/EmptyStates'
+import { DocumentsTab } from '@/components/documents/DocumentsTab'
+import { ChunksTab } from '@/components/documents/ChunksTab'
+
+// Utils
+import { filterDocumentsBySource, filterDocumentGroupsBySource, calculateStats, extractAvailableSources } from '@/utils/documentUtils'
 
 export default function DocumentsPage() {
   const { t } = useTranslation()
-  const [collections, setCollections] = useState<Collection[]>([])
-  const [selectedCollection, setSelectedCollection] = useState<string>('')
-  const [documents, setDocuments] = useState<Document[]>([])
-  const [documentGroups, setDocumentGroups] = useState<DocumentGroup[]>([])
-  const [chunks, setChunks] = useState<Document[]>([])
-  const [chunksLoaded, setChunksLoaded] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
-  const [loadingChunks, setLoadingChunks] = useState(false)
+  
+  // Custom hooks
+  const { collections, selectedCollection, setSelectedCollection, fetchCollections } = useCollections()
+  const { documents, documentGroups, loading, refreshing, setRefreshing, fetchDocuments } = useDocuments(selectedCollection)
+  const { chunks, chunksLoaded, loadingChunks, loadChunksForCollection, clearChunksCache } = useChunks(selectedCollection)
+  
+  // Local state
   const [activeTab, setActiveTab] = useState('documents')
-  
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
-  const [totalItems, setTotalItems] = useState(0)
-  
-  // Upload modal state
   const [showUploadModal, setShowUploadModal] = useState(false)
-  
-  // Selection states
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([])
   const [selectedChunks, setSelectedChunks] = useState<string[]>([])
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  
-  // Popover states
   const [openPopovers, setOpenPopovers] = useState<Set<string>>(new Set())
   const [openSourcePopovers, setOpenSourcePopovers] = useState<Set<string>>(new Set())
-
-  // Filtering states
-  const [availableSources, setAvailableSources] = useState<string[]>([])
   const [selectedSources, setSelectedSources] = useState<string[]>([])
 
-  const fetchCollections = useCallback(async () => {
-    try {
-      const response = await fetch('/api/collections')
-      const res = await response.json()
-      if (!res.success) {
-        toast.error(t('common.error'), {
-          description: t('collections.messages.fetchError')
-        })
-        setCollections([])
-        return
-      }
-      
-      const collectionsData: Collection[] = res.data
-      setCollections(collectionsData)
-      
-      if (collectionsData.length > 0 && !selectedCollection) {
-        setSelectedCollection(collectionsData[0].uuid)
-      }
-    } catch (error) {
-      console.error('Failed to fetch collections:', error)
-      toast.error(t('common.error'), {
-        description: t('collections.messages.fetchError')
-      })
-    }
-  }, [t, selectedCollection])
+  // Derived state
+  const availableSources = useMemo(() => extractAvailableSources(documents), [documents])
+  const filteredDocumentGroups = useMemo(() => 
+    filterDocumentGroupsBySource(documentGroups, selectedSources), 
+    [documentGroups, selectedSources]
+  )
+  const filteredDocuments = useMemo(() => {
+    const docs = activeTab === 'chunks' ? chunks : documents
+    return filterDocumentsBySource(docs, selectedSources)
+  }, [activeTab, chunks, documents, selectedSources])
 
-  const fetchDocuments = useCallback(async () => {
-    if (!selectedCollection) return
+  // Pagination
+  const itemsPerPage = 10
+  const { 
+    currentPage, 
+    totalPages, 
+    paginatedItems: paginatedDocumentGroups, 
+    goToPage, 
+    goToNextPage, 
+    goToPreviousPage,
+    resetPagination 
+  } = usePagination(filteredDocumentGroups, itemsPerPage)
 
-    try {
-      setLoading(true)
-      
-      // Fetch document groups efficiently using the backend API
-      const documentGroupsResponse = await fetch(
-        `/api/collections/${selectedCollection}/document-groups?limit=100`
-      )
-      const documentGroupsRes = await documentGroupsResponse.json()
-      
-      if (!documentGroupsRes.success) {
-        toast.error(t('common.error'), {
-          description: t('documents.messages.fetchError')
-        })
-        return
-      }
+  const { 
+    currentPage: currentChunksPage, 
+    totalPages: totalChunksPages, 
+    paginatedItems: paginatedChunks, 
+    goToPage: goToChunksPage, 
+    goToNextPage: goToNextChunksPage, 
+    goToPreviousPage: goToPreviousChunksPage 
+  } = usePagination(filteredDocuments, itemsPerPage)
 
-      const documentGroupsData: DocumentGroup[] = documentGroupsRes.data || []
-      
-      // Transform backend data to match UI expectations
-      const transformedGroups: DocumentGroup[] = documentGroupsData.map(group => ({
-        ...group,
-        timestamp: group.created_at, // For backward compatibility
-        chunks: [] // Will be populated only when needed
-      }))
+  // Stats
+  const stats = useMemo(() => calculateStats(documents, chunks, activeTab), [documents, chunks, activeTab])
 
-      setDocumentGroups(transformedGroups)
-      
-      // Extract unique sources
-      const sources = new Set(documentGroupsData.map(group => group.source))
-      setAvailableSources(Array.from(sources))
-      setSelectedSources(Array.from(sources))
-
-      // Initialize empty documents array - will be loaded only when needed
-      setDocuments([])
-      setTotalItems(0)
-
-    } catch (error) {
-      console.error('Failed to fetch documents:', error)
-      toast.error(t('common.error'), {
-        description: t('documents.messages.fetchError')
-      })
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [selectedCollection, t])
-
+  // Effects
   useEffect(() => {
     fetchCollections()
   }, [fetchCollections])
 
-
-
   useEffect(() => {
     if (selectedCollection) {
       fetchDocuments()
-      // 새로운 컬렉션 선택 시 청크 캐시 초기화
-      setChunksLoaded(new Set())
+      clearChunksCache()
     }
-  }, [selectedCollection, fetchDocuments])
+  }, [selectedCollection, fetchDocuments, clearChunksCache])
 
-  // Load chunks when switching to chunks tab or when collection changes in chunks tab
   useEffect(() => {
-    if (activeTab === 'chunks' && selectedCollection) {
-      // 이미 로드된 컬렉션이면 다시 로드하지 않음
-      if (chunksLoaded.has(selectedCollection)) {
-        return
-      }
-
-      const loadChunksForCollection = async () => {
-        try {
-          setLoadingChunks(true)
-          let allChunks: Document[] = []
-          const limit = 3000
-
-          const fetchBatch = async (batchOffset: number) => {
-            const response = await fetch(
-              `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${batchOffset}`
-            )
-            const res = await response.json()
-            
-            if (!res.success) {
-              throw new Error('Failed to fetch batch')
-            }
-            
-            return res.data || []
-          }
-
-          const firstBatch = await fetchBatch(0)
-          allChunks = firstBatch
-          
-          if (firstBatch.length === limit) {
-            let currentOffset = limit
-            
-            while (true) {
-              const batch = await fetchBatch(currentOffset)
-              if (batch.length === 0) break
-              
-              allChunks = allChunks.concat(batch)
-              currentOffset += limit
-              
-              if (batch.length < limit) break
-            }
-          }
-
-          setChunks(allChunks)
-          setTotalItems(allChunks.length)
-          setChunksLoaded(prev => new Set([...prev, selectedCollection]))
-          
-          toast.success(t('documents.messages.loadSuccess', { count: allChunks.length }))
-          
-        } catch (error) {
-          console.error('Failed to load chunks:', error)
-          toast.error(t('common.error'), {
-            description: t('documents.messages.fetchError')
-          })
-        } finally {
-          setLoadingChunks(false)
-        }
-      }
-
+    if (activeTab === 'chunks' && selectedCollection && !chunksLoaded.has(selectedCollection)) {
       loadChunksForCollection()
     }
-  }, [activeTab, selectedCollection, chunksLoaded, t])
+  }, [activeTab, selectedCollection, chunksLoaded, loadChunksForCollection])
 
-  const handleRefresh = () => {
+  useEffect(() => {
+    setSelectedSources(availableSources)
+  }, [availableSources])
+
+  // Event handlers
+  const handleRefresh = useCallback(() => {
     setRefreshing(true)
     fetchDocuments()
-    
-    // 모든 탭에서 리프레시 시 청크 캐시 초기화 및 다시 로드
-    if (selectedCollection) {
-      setChunksLoaded(new Set())
-      
-      // 즉시 청크 다시 로드
-      const loadChunksForCollection = async () => {
-        try {
-          setLoadingChunks(true)
-          let allChunks: Document[] = []
-          const limit = 3000
-
-          const fetchBatch = async (batchOffset: number) => {
-            const response = await fetch(
-              `/api/collections/${selectedCollection}/documents?limit=${limit}&offset=${batchOffset}`
-            )
-            const res = await response.json()
-            
-            if (!res.success) {
-              throw new Error('Failed to fetch batch')
-            }
-            
-            return res.data || []
-          }
-
-          const firstBatch = await fetchBatch(0)
-          allChunks = firstBatch
-          
-          if (firstBatch.length === limit) {
-            let currentOffset = limit
-            
-            while (true) {
-              const batch = await fetchBatch(currentOffset)
-              if (batch.length === 0) break
-              
-              allChunks = allChunks.concat(batch)
-              currentOffset += limit
-              
-              if (batch.length < limit) break
-            }
-          }
-
-          setChunks(allChunks)
-          setTotalItems(allChunks.length)
-          setChunksLoaded(prev => new Set([...prev, selectedCollection]))
-          
-          toast.success(t('documents.messages.loadSuccess', { count: allChunks.length }))
-          
-        } catch (error) {
-          console.error('Failed to load chunks:', error)
-          toast.error(t('common.error'), {
-            description: t('documents.messages.fetchError')
-          })
-        } finally {
-          setLoadingChunks(false)
-        }
-      }
-
+    clearChunksCache()
+    if (activeTab === 'chunks') {
       loadChunksForCollection()
     }
-  }
+  }, [fetchDocuments, clearChunksCache, loadChunksForCollection, activeTab, setRefreshing])
 
   const handleDeleteSelected = useCallback(async () => {
-    const toDelete = activeTab === 'documents' ? selectedDocuments : selectedChunks
-    if (toDelete.length === 0) return
+    if (!selectedCollection) return
 
-    setDeleting(true)
-    
-    const payload: any = {}
-    if (activeTab === 'documents') {
-      // For documents tab, we delete by file_ids
-      payload.file_ids = toDelete
-    } else {
-      // For chunks tab, we delete by document_ids (individual chunk IDs)
-      payload.document_ids = toDelete
-    }
+    const selectedIds = activeTab === 'documents' ? selectedDocuments : selectedChunks
+    if (selectedIds.length === 0) return
 
     try {
+      setDeleting(true)
       const response = await fetch(`/api/collections/${selectedCollection}/documents`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ document_ids: selectedIds }),
       })
-      
-      const result = await response.json()
 
-      if (response.ok && result.success) {
-        toast.success(t('documents.messages.deleteSuccess', { count: result.deleted_count || toDelete.length }))
-      } else {
-        throw new Error(result.message || 'Failed to delete items.')
+      const res = await response.json()
+      if (!res.success) {
+        toast.error(t('common.error'), {
+          description: res.message || t('documents.messages.deleteError')
+        })
+        return
       }
 
-    } catch (error: any) {
-      console.error(`Failed to delete ${activeTab}:`, error)
-      toast.error(t('documents.messages.deleteError'), {
-        description: error.message
+      toast.success(t('documents.messages.deleteSuccess'))
+      setSelectedDocuments([])
+      setSelectedChunks([])
+      handleRefresh()
+    } catch (error) {
+      console.error('Failed to delete documents:', error)
+      toast.error(t('common.error'), {
+        description: t('documents.messages.deleteError')
       })
     } finally {
       setDeleting(false)
       setShowDeleteConfirm(false)
-      setSelectedDocuments([])
-      setSelectedChunks([])
-      fetchDocuments()
     }
-  }, [activeTab, selectedChunks, selectedDocuments, selectedCollection, fetchDocuments, t])
+  }, [selectedCollection, activeTab, selectedDocuments, selectedChunks, handleRefresh, t])
 
   const toggleDocumentSelection = (file_id: string) => {
     setSelectedDocuments(prev => 
@@ -372,191 +212,46 @@ export default function DocumentsPage() {
     })
   }
 
-  // Filter documents and chunks based on selected sources
-  const filteredDocumentGroups = documentGroups.filter(group => 
-    selectedSources.includes(group.source)
-  )
-  
-  const filteredDocuments = (activeTab === 'chunks' ? chunks : documents).filter(doc => 
-    selectedSources.includes(doc.metadata?.source || 'N/A')
-  )
-  
-  // Pagination logic
-  const totalPages = Math.ceil(
-    activeTab === 'documents' 
-      ? filteredDocumentGroups.length / itemsPerPage 
-      : filteredDocuments.length / itemsPerPage
-  )
-  
-  const paginatedDocumentGroups = filteredDocumentGroups.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
-  
-  const paginatedDocuments = filteredDocuments.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  )
-  
-  // Reset to page 1 when changing tabs or filters
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab, selectedSources])
+  const handleSelectAllDocuments = (checked: boolean) => {
+    if (checked) {
+      const currentPageIds = paginatedDocumentGroups.map(d => d.file_id)
+      setSelectedDocuments([...new Set([...selectedDocuments, ...currentPageIds])])
+    } else {
+      const currentPageIds = paginatedDocumentGroups.map(d => d.file_id)
+      setSelectedDocuments(selectedDocuments.filter(id => !currentPageIds.includes(id)))
+    }
+  }
 
-  // Statistics calculation
-  const totalDocuments = documentGroups.length
-  const totalChunks = activeTab === 'chunks' ? chunks.length : documentGroups.reduce((sum, group) => sum + group.chunk_count, 0)
-  const totalCharacters = activeTab === 'chunks' ? chunks.reduce((sum, doc) => sum + doc.content.length, 0) : documentGroups.reduce((sum, group) => sum + group.total_chars, 0)
-  
-
-
-  // Loading skeleton component
-  const LoadingSkeleton = () => (
-    <div className="space-y-6">
-      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 animate-pulse">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-4" />
-            <Skeleton className="h-4 w-8" />
-            <Skeleton className="h-4 w-6" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-4" />
-            <Skeleton className="h-4 w-8" />
-            <Skeleton className="h-4 w-6" />
-          </div>
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-4 w-4" />
-            <Skeleton className="h-4 w-8" />
-            <Skeleton className="h-4 w-8" />
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-
-  // Empty state component
-  const EmptyState = () => (
-    <Card className="border-dashed border-2 border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50">
-      <CardContent className="flex flex-col items-center justify-center py-12">
-        <div className="rounded-full bg-green-50 dark:bg-green-900/20 p-6 mb-4">
-          <FileText className="h-12 w-12 text-green-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">{t('documents.noDocuments')}</h3>
-        <p className="text-gray-500 dark:text-gray-300 text-center mb-6 max-w-sm">
-          {t('documents.noDocumentsDescription')}
-        </p>
-        <Button 
-          onClick={() => setShowUploadModal(true)}
-          disabled={!selectedCollection}
-          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600"
-        >
-          <Upload className="w-4 h-4 mr-2" />
-          {t('documents.uploadFirstDocument')}
-        </Button>
-      </CardContent>
-    </Card>
-  )
-
-  // Empty documents tab state
-  const EmptyDocumentsState = () => (
-    <div className="bg-white dark:bg-card rounded-xl border border-gray-200/50 dark:border-gray-700 shadow-sm overflow-hidden">
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="rounded-full bg-green-50 dark:bg-green-900/20 p-8 mb-6">
-          <File className="h-16 w-16 text-green-500" />
-        </div>
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('documents.noDocuments')}</h3>
-        <p className="text-gray-500 dark:text-gray-300 text-center mb-8 max-w-md">
-          {t('documents.noDocumentsDescription')}
-        </p>
-        <Button 
-          onClick={() => setShowUploadModal(true)}
-          className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl transition-all duration-200"
-        >
-          <Upload className="w-5 h-5 mr-2" />
-          {t('documents.uploadDocument')}
-        </Button>
-      </div>
-    </div>
-  )
-
-  // Empty chunks tab state
-  const EmptyChunksState = () => (
-    <div className="bg-white dark:bg-card rounded-xl border border-gray-200/50 dark:border-gray-700 shadow-sm overflow-hidden">
-      <div className="flex flex-col items-center justify-center py-16">
-        <div className="rounded-full bg-purple-50 dark:bg-purple-900/20 p-8 mb-6">
-          <Archive className="h-16 w-16 text-purple-500" />
-        </div>
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3">{t('collections.stats.chunks')}</h3>
-        <p className="text-gray-500 dark:text-gray-300 text-center mb-8 max-w-md">
-          {t('documents.noDocumentsDescription')}
-        </p>
-        <Button 
-          onClick={() => setShowUploadModal(true)}
-          className="bg-gradient-to-r from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600 shadow-lg hover:shadow-xl transition-all duration-200"
-        >
-          <Upload className="w-5 h-5 mr-2" />
-          {t('documents.uploadDocument')}
-        </Button>
-      </div>
-    </div>
-  )
+  const handleSelectAllChunks = (checked: boolean) => {
+    if (checked) {
+      const currentPageIds = paginatedChunks.map(d => d.id)
+      setSelectedChunks([...new Set([...selectedChunks, ...currentPageIds])])
+    } else {
+      const currentPageIds = paginatedChunks.map(d => d.id)
+      setSelectedChunks(selectedChunks.filter(id => !currentPageIds.includes(id)))
+    }
+  }
 
   return (
     <div className="min-h-screen p-6 bg-background dark:bg-background">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent flex items-center gap-3">
-              <FileText className="h-8 w-8 text-green-500" />
-              {t('documents.title')}
-            </h1>
-            <p className="text-gray-600 dark:text-gray-300 mt-1">{t('documents.description')}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Select value={selectedCollection} onValueChange={setSelectedCollection}>
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder={t('documents.selectCollection')} />
-              </SelectTrigger>
-              <SelectContent>
-                {collections.map((collection) => (
-                  <SelectItem key={collection.uuid} value={collection.uuid}>
-                    {collection.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {t('common.refresh')}
-            </Button>
-            <Button 
-              onClick={() => setShowUploadModal(true)}
-              disabled={!selectedCollection}
-              size="sm"
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              {t('documents.uploadDocument')}
-            </Button>
-          </div>
-        </div>
+        <DocumentsHeader 
+          collections={collections}
+          selectedCollection={selectedCollection}
+          onCollectionChange={setSelectedCollection}
+          onRefresh={handleRefresh}
+          onUpload={() => setShowUploadModal(true)}
+          refreshing={refreshing}
+        />
 
         {/* Loading State */}
         {loading && !refreshing && <LoadingSkeleton />}
 
         {/* Empty State */}
-        {!loading && selectedCollection && totalDocuments === 0 && <EmptyState />}
+        {!loading && selectedCollection && stats.totalDocuments === 0 && <EmptyState onUpload={() => setShowUploadModal(true)} />}
 
         {/* Content */}
-        {!loading && selectedCollection && totalDocuments > 0 && (
+        {!loading && selectedCollection && stats.totalDocuments > 0 && (
           <>
             {/* Statistics */}
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
@@ -565,17 +260,17 @@ export default function DocumentsPage() {
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-green-500" />
                     <span className="text-sm text-gray-600 dark:text-gray-300">{t('collections.stats.documents')}</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{totalDocuments}</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{stats.totalDocuments}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Archive className="h-4 w-4 text-purple-500" />
                     <span className="text-sm text-gray-600 dark:text-gray-300">{t('collections.stats.chunks')}</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{totalChunks}</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{stats.totalChunks}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <BookOpen className="h-4 w-4 text-blue-500" />
                     <span className="text-sm text-gray-600 dark:text-gray-300">Characters</span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">{totalCharacters.toLocaleString()}</span>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">{stats.totalCharacters.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -595,624 +290,122 @@ export default function DocumentsPage() {
                         ? t('common.selected', { count: (activeTab === 'documents' ? selectedDocuments : selectedChunks).length })
                         : activeTab === 'documents' 
                           ? t('common.total', { count: filteredDocumentGroups.length })
-                          : `${filteredDocuments.length}/${documents.length} ${t('collections.stats.chunks')}`}
+                          : t('common.total', { count: filteredDocuments.length })}
                     </CardDescription>
                   </div>
-                  
-                  {((activeTab === 'documents' ? selectedDocuments : selectedChunks).length > 0) && (
-                    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="flex items-center gap-2">
-                          <Trash2 className="w-4 h-4" />
-                          {t('collections.deleteConfirm.deleteSelected')}
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>{t('documents.deleteConfirm.title')}</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t('documents.deleteConfirm.description', { fileName: activeTab === 'documents' ? t('collections.stats.documents') : t('collections.stats.chunks') })}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel disabled={deleting}>{t('common.cancel')}</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleDeleteSelected}
-                            disabled={deleting}
-                            className="bg-red-600 hover:bg-red-700"
-                          >
-                            {deleting ? (
-                              <>
-                                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                                {t('collections.deleteConfirm.deleting')}
-                              </>
-                            ) : (
-                              t('common.delete')
-                            )}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                  {(selectedDocuments.length > 0 || selectedChunks.length > 0) && (
+                    <div className="flex items-center gap-2">
+                      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" className="flex items-center gap-2">
+                            <Trash2 className="w-4 h-4" />
+                            {t('common.delete')} ({activeTab === 'documents' ? selectedDocuments.length : selectedChunks.length})
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t('common.confirmDelete')}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t('documents.messages.deleteConfirm', { 
+                                count: activeTab === 'documents' ? selectedDocuments.length : selectedChunks.length 
+                              })}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={handleDeleteSelected}
+                              disabled={deleting}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              {deleting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  {t('common.deleting')}
+                                </>
+                              ) : (
+                                t('common.delete')
+                              )}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   )}
                 </div>
               </CardHeader>
               <CardContent>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="documents" className="flex items-center gap-2">
-                      <File className="w-4 h-4" />
-                      {t('collections.stats.documents')}
+                      <FileText className="h-4 w-4" />
+                      {t('documents.tabs.documents')}
                     </TabsTrigger>
                     <TabsTrigger value="chunks" className="flex items-center gap-2">
-                      <Archive className="w-4 h-4" />
-                      {t('collections.stats.chunks')}
+                      <Archive className="h-4 w-4" />
+                      {t('documents.tabs.chunks')}
                     </TabsTrigger>
                   </TabsList>
-
+                  
                   <TabsContent value="documents" className="mt-6">
-                    {filteredDocumentGroups.length === 0 ? (
-                      <EmptyDocumentsState />
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <th className="w-8 px-4 py-3 text-left">
-                              <input
-                                type="checkbox"
-                                checked={paginatedDocumentGroups.length > 0 && paginatedDocumentGroups.every(g => selectedDocuments.includes(g.file_id))}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    // 현재 페이지의 모든 항목을 선택
-                                    const currentPageIds = paginatedDocumentGroups.map(g => g.file_id)
-                                    setSelectedDocuments([...new Set([...selectedDocuments, ...currentPageIds])])
-                                  } else {
-                                    // 현재 페이지의 모든 항목을 선택 해제
-                                    const currentPageIds = paginatedDocumentGroups.map(g => g.file_id)
-                                    setSelectedDocuments(selectedDocuments.filter(id => !currentPageIds.includes(id)))
-                                  }
-                                }}
-                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                              />
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              Source
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              {t('collections.table.stats')}
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              File ID
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              Timestamp
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {paginatedDocumentGroups.map((group) => (
-                            <tr
-                              key={group.file_id}
-                              className={`transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50 ${
-                                selectedDocuments.includes(group.file_id) ? 'bg-green-50/50 dark:bg-green-900/20' : ''
-                              }`}
-                            >
-                              <td className="px-4 py-4">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedDocuments.includes(group.file_id)}
-                                  onChange={() => toggleDocumentSelection(group.file_id)}
-                                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                                />
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="flex items-center space-x-3">
-                                  <div className="flex-shrink-0">
-                                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                                      <FileText className="h-4 w-4 text-white" />
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <Popover 
-                                      open={openSourcePopovers.has(group.file_id)}
-                                      onOpenChange={(isOpen) => toggleSourcePopover(group.file_id, isOpen)}
-                                    >
-                                      <PopoverTrigger asChild>
-                                        <button className="text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-green-600 dark:hover:text-green-400 transition-colors cursor-pointer flex items-center gap-1">
-                                          {group.source}
-                                          <Info className="h-3 w-3 text-gray-400 dark:text-gray-400" />
-                                        </button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-[600px] p-0" align="start">
-                                        <div className="p-4">
-                                          <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                                              <FileText className="h-5 w-5 text-green-500" />
-                                              {group.source}
-                                            </h3>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              onClick={() => toggleSourcePopover(group.file_id, false)}
-                                            >
-                                              <X className="h-4 w-4" />
-                                            </Button>
-                                          </div>
-                                          
-                                          <div className="space-y-4">
-                                            {/* 기본 정보 */}
-                                            <div>
-                                              <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400 mb-2">{t('collections.popover.basicInfo')}</h4>
-                                              <div className="space-y-2 text-sm">
-                                                <div className="flex justify-between">
-                                                  <span className="text-gray-500 dark:text-gray-400">File ID:</span>
-                                                  <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
-                                                    {group.file_id}
-                                                  </code>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                  <span className="text-gray-500 dark:text-gray-400">{t('collections.stats.chunks')}:</span>
-                                                  <span className="font-medium">{t('collections.stats.chunksCount', { count: group.chunk_count })}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                  <span className="text-gray-500 dark:text-gray-400">Characters:</span>
-                                                  <span className="font-medium">{group.total_chars.toLocaleString()}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                  <span className="text-gray-500 dark:text-gray-400">Created:</span>
-                                                  <span>{group.timestamp && group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}</span>
-                                                </div>
-                                              </div>
-                                            </div>
-
-                                            {/* 통계 정보 */}
-                                            <div>
-                                              <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400 mb-2">{t('collections.popover.statistics')}</h4>
-                                              <div className="grid grid-cols-2 gap-3">
-                                                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
-                                                  <div className="flex items-center gap-2 mb-1">
-                                                    <Archive className="h-4 w-4 text-green-500" />
-                                                    <span className="text-sm font-medium text-green-700">{t('collections.stats.chunks')}</span>
-                                                  </div>
-                                                  <div className="text-lg font-bold text-green-900 dark:text-green-100">
-                                                    {group.chunk_count}
-                                                  </div>
-                                                  <div className="text-xs text-green-600">
-                                                    Avg {Math.round(group.total_chars / group.chunk_count)} chars/chunk
-                                                  </div>
-                                                </div>
-                                                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-                                                  <div className="flex items-center gap-2 mb-1">
-                                                    <BookOpen className="h-4 w-4 text-blue-500" />
-                                                    <span className="text-sm font-medium text-blue-700">Characters</span>
-                                                  </div>
-                                                  <div className="text-lg font-bold text-blue-900 dark:text-blue-100">
-                                                    {group.total_chars.toLocaleString()}
-                                                  </div>
-                                                  <div className="text-xs text-blue-600">
-                                                    Total characters
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            </div>
-
-                                            {/* 청크 목록 */}
-                                            <div>
-                                              <h4 className="font-medium text-sm text-gray-600 dark:text-gray-400 mb-2">Chunk List ({group.chunk_count})</h4>
-                                              <ScrollArea className="h-40 w-full rounded border">
-                                                                                                  <div className="p-2 space-y-2">
-                                                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">
-                                                      Chunk details are loaded on demand for better performance.
-                                                      <br />
-                                                      Total chunks: {group.chunk_count}
-                                                    </div>
-                                                  </div>
-                                              </ScrollArea>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </PopoverContent>
-                                    </Popover>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="flex items-center space-x-2">
-                                  <Badge variant="secondary" className="text-xs">
-                                    <Archive className="w-3 h-3 mr-1" />
-                                    {t('collections.stats.chunksCount', { count: group.chunk_count })}
-                                  </Badge>
-                                  <Badge variant="outline" className="text-xs">
-                                    {group.total_chars.toLocaleString()} chars
-                                  </Badge>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <code className="text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
-                                  {group.file_id !== 'N/A' ? `${group.file_id.slice(0, 8)}...` : 'N/A'}
-                                </code>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="text-xs text-gray-500 dark:text-gray-300">
-                                                                                  {group.timestamp && group.timestamp !== 'N/A' ? new Date(group.timestamp).toLocaleString() : 'N/A'}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      </div>
-                    )}
-
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-4 py-3 border-t">
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Page {currentPage} / {totalPages} ({t('common.total', { count: filteredDocumentGroups.length })})
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                              disabled={currentPage === 1}
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                              Previous
-                            </Button>
-                            
-                            <div className="flex items-center gap-1">
-                              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
-                                let pageNum
-                                if (totalPages <= 5) {
-                                  pageNum = idx + 1
-                                } else if (currentPage <= 3) {
-                                  pageNum = idx + 1
-                                } else if (currentPage >= totalPages - 2) {
-                                  pageNum = totalPages - 4 + idx
-                                } else {
-                                  pageNum = currentPage - 2 + idx
-                                }
-                                
-                                if (pageNum < 1 || pageNum > totalPages) return null
-                                
-                                return (
-                                  <Button
-                                    key={pageNum}
-                                    variant={currentPage === pageNum ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setCurrentPage(pageNum)}
-                                    className="w-10"
-                                  >
-                                    {pageNum}
-                                  </Button>
-                                )
-                              })}
-                            </div>
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                              disabled={currentPage === totalPages}
-                            >
-                              Next
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
+                    {loading ? (
+                      <LoadingSkeleton />
+                    ) : filteredDocumentGroups.length === 0 ? (
+                      <div className="text-center py-12">
+                        <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                          <FileText className="w-12 h-12 text-gray-400" />
                         </div>
-                      )}
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No documents found</h3>
+                        <p className="text-gray-500 dark:text-gray-400 mb-4">
+                          No documents match your current filters.
+                        </p>
+                        <Button onClick={() => setShowUploadModal(true)}>
+                          Upload Documents
+                        </Button>
+                      </div>
+                    ) : (
+                      <DocumentsTab
+                        paginatedDocumentGroups={paginatedDocumentGroups}
+                        selectedDocuments={selectedDocuments}
+                        onDocumentSelection={toggleDocumentSelection}
+                        onSelectAllDocuments={handleSelectAllDocuments}
+                        openPopovers={openPopovers}
+                        openSourcePopovers={openSourcePopovers}
+                        onTogglePopover={togglePopover}
+                        onToggleSourcePopover={toggleSourcePopover}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onGoToPage={goToPage}
+                        onGoToPreviousPage={goToPreviousPage}
+                        onGoToNextPage={goToNextPage}
+                        totalCount={filteredDocumentGroups.length}
+                      />
+                    )}
                   </TabsContent>
-
+                  
                   <TabsContent value="chunks" className="mt-6">
-                    {/* Source Filter */}
-                    {availableSources.length > 1 && (
-                      <div className="mb-4 flex items-center gap-2">
-                        <Filter className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Source Filter:</span>
-                        <Select 
-                          value={selectedSources.length === availableSources.length ? 'all' : selectedSources[0] || ''}
-                          onValueChange={(value) => {
-                            if (value === 'all') {
-                              setSelectedSources(availableSources)
-                            } else {
-                              setSelectedSources([value])
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-64">
-                            <SelectValue>
-                              {selectedSources.length === availableSources.length 
-                                ? 'All Sources' 
-                                : selectedSources.length === 1 
-                                  ? selectedSources[0] 
-                                  : `${selectedSources.length} sources selected`}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Sources</SelectItem>
-                            {availableSources.map((source) => (
-                              <SelectItem key={source} value={source}>
-                                {source}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    
-                    {loadingChunks ? (
-                      <div className="flex items-center justify-center py-8">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">Loading chunks...</p>
-                        </div>
-                      </div>
-                    ) : filteredDocuments.length === 0 ? (
-                      <EmptyChunksState />
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <th className="w-8 px-4 py-3 text-left">
-                              <input
-                                type="checkbox"
-                                checked={paginatedDocuments.length > 0 && paginatedDocuments.every(d => selectedChunks.includes(d.id))}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    // 현재 페이지의 모든 항목을 선택
-                                    const currentPageIds = paginatedDocuments.map(d => d.id)
-                                    setSelectedChunks([...new Set([...selectedChunks, ...currentPageIds])])
-                                  } else {
-                                    // 현재 페이지의 모든 항목을 선택 해제
-                                    const currentPageIds = paginatedDocuments.map(d => d.id)
-                                    setSelectedChunks(selectedChunks.filter(id => !currentPageIds.includes(id)))
-                                  }
-                                }}
-                                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                              />
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              ID
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              Content Preview
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              Characters
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              Source
-                            </th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                              Timestamp
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {paginatedDocuments.map((doc) => (
-                            <tr
-                              key={doc.id}
-                              className={`transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-800/50 ${
-                                selectedChunks.includes(doc.id) ? 'bg-purple-50/50 dark:bg-purple-900/20' : ''
-                              }`}
-                            >
-                              <td className="px-4 py-4">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedChunks.includes(doc.id)}
-                                  onChange={() => toggleChunkSelection(doc.id)}
-                                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                                />
-                              </td>
-                              <td className="px-4 py-4">
-                                <code className="text-xs text-gray-500 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded font-mono">
-                                  {doc.id.slice(0, 8)}...
-                                </code>
-                              </td>
-                              <td className="px-4 py-4">
-                                <Popover 
-                                  open={openPopovers.has(doc.id)}
-                                  onOpenChange={(isOpen) => togglePopover(doc.id, isOpen)}
-                                >
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      className="p-0 h-auto font-normal text-left justify-start max-w-md"
-                                    >
-                                      <div className="text-sm text-gray-900 dark:text-gray-100 truncate hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer">
-                                        {doc.content}
-                                      </div>
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-[700px] p-0" align="start">
-                                    <div className="p-4">
-                                      <div className="flex items-center justify-between mb-4">
-                                        <h4 className="font-semibold text-sm dark:text-gray-100">Chunk Details</h4>
-                                        <div className="flex items-center gap-2">
-                                          <Badge variant="secondary" className="text-xs">
-                                            {doc.content.length} chars
-                                          </Badge>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                            onClick={() => togglePopover(doc.id, false)}
-                                          >
-                                            <X className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                      
-                                      <Tabs defaultValue="content" className="w-full">
-                                        <TabsList className="grid w-full grid-cols-2">
-                                          <TabsTrigger value="content">Content</TabsTrigger>
-                                          <TabsTrigger value="metadata">{t('collections.table.metadata')}</TabsTrigger>
-                                        </TabsList>
-                                        
-                                        <TabsContent value="content" className="mt-4">
-                                          <div className="space-y-3">
-                                            <ScrollArea className="h-[350px] w-full border dark:border-gray-700 rounded-md p-4 bg-gray-50 dark:bg-gray-800">
-                                              <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap pr-4">
-                                                {doc.content}
-                                              </div>
-                                            </ScrollArea>
-                                            
-                                            {/* 기본 정보 */}
-                                            <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-3 border dark:border-gray-700">
-                                              <div className="space-y-2">
-                                                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
-                                                  <span className="font-medium">Document ID:</span>
-                                                  <code className="bg-white dark:bg-gray-700 px-2 py-1 rounded font-mono text-gray-700 dark:text-gray-300 border dark:border-gray-600 text-xs">
-                                                    {doc.id}
-                                                  </code>
-                                                </div>
-                                                {doc.metadata?.file_id && (
-                                                  <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
-                                                    <span className="font-medium">File ID:</span>
-                                                    <code className="bg-white dark:bg-gray-700 px-2 py-1 rounded font-mono text-gray-700 dark:text-gray-300 border dark:border-gray-600 text-xs">
-                                                      {doc.metadata.file_id}
-                                                    </code>
-                                                  </div>
-                                                )}
-                                                {doc.metadata?.source && (
-                                                  <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
-                                                    <span className="font-medium">Source:</span>
-                                                    <span className="text-gray-700 dark:text-gray-300">{doc.metadata.source}</span>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </TabsContent>
-                                        
-                                        <TabsContent value="metadata" className="mt-4">
-                                          <ScrollArea className="h-[400px] w-full">
-                                            <div className="space-y-3">
-                                              <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4 space-y-3">
-                                                <div className="flex flex-col sm:flex-row sm:items-start gap-2 py-2 border-b border-gray-200 dark:border-gray-700">
-                                                  <span className="font-medium text-sm text-gray-600 dark:text-gray-300 min-w-[160px] flex-shrink-0">Document ID:</span>
-                                                  <code className="bg-white dark:bg-gray-700 px-2 py-1 rounded font-mono text-xs text-gray-700 dark:text-gray-300 border dark:border-gray-600 break-all">
-                                                    {doc.id}
-                                                  </code>
-                                                </div>
-                                                
-                                                {doc.metadata && Object.entries(doc.metadata).length > 0 ? (
-                                                  Object.entries(doc.metadata).map(([key, value]) => (
-                                                    <div key={key} className="flex flex-col sm:flex-row sm:items-start gap-2 py-2 border-b border-gray-200 dark:border-gray-700 last:border-b-0">
-                                                      <span className="font-medium text-sm text-gray-600 dark:text-gray-300 min-w-[160px] flex-shrink-0">{key}:</span>
-                                                      <div className="text-sm text-gray-700 dark:text-gray-300 flex-1 min-w-0">
-                                                        {typeof value === 'object' 
-                                                          ? (
-                                                            <pre className="bg-white dark:bg-gray-700 p-2 rounded border dark:border-gray-600 text-xs overflow-x-auto">
-                                                              {JSON.stringify(value, null, 2)}
-                                                            </pre>
-                                                          )
-                                                          : (key === 'timestamp' || key === 'created_at') && typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}/)
-                                                          ? (
-                                                            <span className="text-gray-700 dark:text-gray-300 break-words">
-                                                              {new Date(value).toLocaleString()}
-                                                            </span>
-                                                          )
-                                                          : <span className="break-words">{String(value)}</span>
-                                                        }
-                                                      </div>
-                                                    </div>
-                                                  ))
-                                                ) : (
-                                                  <div className="text-sm text-gray-400 dark:text-gray-400 italic text-center py-8">
-                                                    No additional metadata
-                                                  </div>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </ScrollArea>
-                                        </TabsContent>
-                                      </Tabs>
-                                    </div>
-                                  </PopoverContent>
-                                </Popover>
-                              </td>
-                              <td className="px-4 py-4">
-                                <Badge variant="outline" className="text-xs">
-                                  {doc.content.length}
-                                </Badge>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="text-sm text-gray-500 dark:text-gray-300">
-                                  {doc.metadata?.source || 'N/A'}
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="text-xs text-gray-500 dark:text-gray-300">
-                                  {doc.metadata?.timestamp || doc.metadata?.created_at ? 
-                                    new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
-                                    'N/A'}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      </div>
-                    )}
-                      {totalPages > 1 && (
-                        <div className="flex items-center justify-between px-4 py-3 border-t">
-                          <div className="text-sm text-gray-500 dark:text-gray-400">
-                            Page {currentPage} / {totalPages} ({t('common.total', { count: filteredDocuments.length })})
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                              disabled={currentPage === 1}
-                            >
-                              <ChevronLeft className="h-4 w-4" />
-                              Previous
-                            </Button>
-                            
-                            <div className="flex items-center gap-1">
-                              {[...Array(Math.min(5, totalPages))].map((_, idx) => {
-                                let pageNum
-                                if (totalPages <= 5) {
-                                  pageNum = idx + 1
-                                } else if (currentPage <= 3) {
-                                  pageNum = idx + 1
-                                } else if (currentPage >= totalPages - 2) {
-                                  pageNum = totalPages - 4 + idx
-                                } else {
-                                  pageNum = currentPage - 2 + idx
-                                }
-                                
-                                if (pageNum < 1 || pageNum > totalPages) return null
-                                
-                                return (
-                                  <Button
-                                    key={pageNum}
-                                    variant={currentPage === pageNum ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => setCurrentPage(pageNum)}
-                                    className="w-10"
-                                  >
-                                    {pageNum}
-                                  </Button>
-                                )
-                              })}
-                            </div>
-                            
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                              disabled={currentPage === totalPages}
-                            >
-                              Next
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                    <ChunksTab
+                      loadingChunks={loadingChunks}
+                      filteredDocuments={filteredDocuments}
+                      paginatedChunks={paginatedChunks}
+                      selectedChunks={selectedChunks}
+                      onChunkSelection={toggleChunkSelection}
+                      onSelectAllChunks={handleSelectAllChunks}
+                      openPopovers={openPopovers}
+                      openSourcePopovers={openSourcePopovers}
+                      onTogglePopover={togglePopover}
+                      onToggleSourcePopover={toggleSourcePopover}
+                      availableSources={availableSources}
+                      selectedSources={selectedSources}
+                      onSourceChange={setSelectedSources}
+                      currentPage={currentChunksPage}
+                      totalPages={totalChunksPages}
+                      onGoToPage={goToChunksPage}
+                      onGoToPreviousPage={goToPreviousChunksPage}
+                      onGoToNextPage={goToNextChunksPage}
+                      totalCount={filteredDocuments.length}
+                      onUpload={() => setShowUploadModal(true)}
+                    />
                   </TabsContent>
                 </Tabs>
               </CardContent>
@@ -1226,7 +419,7 @@ export default function DocumentsPage() {
         open={showUploadModal}
         onOpenChange={setShowUploadModal}
         collections={collections}
-        onSuccess={fetchDocuments}
+        onSuccess={handleRefresh}
       />
     </div>
   )

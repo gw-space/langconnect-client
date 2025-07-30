@@ -302,3 +302,63 @@ async def document_groups_list(
         logger.error(f"Error in document_groups_list: {type(e).__name__}: {str(e)}")
         logger.error(f"Error details: {e.__dict__}")
         raise
+
+
+@router.patch("/collections/{collection_id}/documents/{document_id}/verification")
+async def update_document_verification(
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    collection_id: UUID,
+    document_id: str,
+    verification_data: dict,
+):
+    """Update document verification status"""
+    try:
+        verified = verification_data.get("verified")
+        if not isinstance(verified, bool):
+            raise HTTPException(status_code=400, detail="verified must be a boolean")
+
+        # Update document metadata
+        success = await update_document_metadata(
+            user=user,
+            collection_id=str(collection_id),
+            document_id=document_id,
+            metadata_update={"verified": verified},
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        return {"success": True, "message": "Verification status updated successfully"}
+    except Exception as e:
+        logger.error(f"Error updating verification status: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+async def update_document_metadata(
+    user: AuthenticatedUser, collection_id: str, document_id: str, metadata_update: dict
+) -> bool:
+    """Update document metadata"""
+    try:
+        collection = Collection(
+            collection_id=collection_id,
+            user_id=user.identity,
+        )
+
+        # Get current document
+        result = await collection.get_document(document_id)
+
+        if not result:
+            return False
+
+        current_metadata = result.metadata or {}
+
+        # Update metadata
+        updated_metadata = {**current_metadata, **metadata_update}
+
+        # Update document
+        await collection.update_document(document_id, {"metadata": updated_metadata})
+
+        return True
+    except Exception as e:
+        logger.error(f"Error updating document metadata: {e}")
+        return False

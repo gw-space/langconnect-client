@@ -475,6 +475,55 @@ class Collection:
             "metadata": metadata,
         }
 
+    async def update_document(self, document_id: str, updates: dict[str, Any]) -> bool:
+        """Update a document's metadata."""
+        async with get_db_connection() as conn:
+            # Get current document to verify ownership
+            current = await conn.fetchrow(
+                """
+                SELECT e.cmetadata
+                  FROM langchain_pg_embedding e
+                  JOIN langchain_pg_collection c
+                    ON e.collection_id = c.uuid
+                 WHERE e.uuid = $1
+                   AND c.cmetadata->>'owner_id' = $2
+                   AND c.uuid = $3
+                """,
+                document_id,
+                self.user_id,
+                self.collection_id,
+            )
+
+            if not current:
+                return False
+
+            # Merge current metadata with updates
+            current_metadata = (
+                json.loads(current["cmetadata"]) if current["cmetadata"] else {}
+            )
+            updated_metadata = {**current_metadata, **updates}
+
+            # Update the document
+            await conn.execute(
+                """
+                UPDATE langchain_pg_embedding
+                   SET cmetadata = $4
+                 WHERE uuid = $1
+                   AND collection_id = $2
+                   AND EXISTS (
+                       SELECT 1 FROM langchain_pg_collection c
+                       WHERE c.uuid = $2
+                         AND c.cmetadata->>'owner_id' = $3
+                   )
+                """,
+                document_id,
+                self.collection_id,
+                self.user_id,
+                json.dumps(updated_metadata),
+            )
+
+            return True
+
     async def search(
         self,
         query: str,
@@ -695,24 +744,26 @@ class Collection:
     ) -> List[Dict[str, Any]]:
         """Aggregate document groups by file_id, returning chunk count, total chars, and metadata."""
         try:
-            logger.info(f"Aggregate document groups - collection_id: {self.collection_id}, user_id: {self.user_id}, limit: {limit}, offset: {offset}")
-            
+            logger.info(
+                f"Aggregate document groups - collection_id: {self.collection_id}, user_id: {self.user_id}, limit: {limit}, offset: {offset}"
+            )
+
             async with get_db_connection() as conn:
                 # 먼저 컬렉션이 존재하는지 확인
                 collection_exists = await conn.fetchval(
                     "SELECT COUNT(*) FROM langchain_pg_collection WHERE uuid = $1 AND cmetadata->>'owner_id' = $2",
                     self.collection_id,
-                    self.user_id
+                    self.user_id,
                 )
                 logger.info(f"Collection exists: {collection_exists}")
-                
+
                 # 임베딩 개수 확인
                 embedding_count = await conn.fetchval(
                     "SELECT COUNT(*) FROM langchain_pg_embedding WHERE collection_id = $1",
-                    self.collection_id
+                    self.collection_id,
                 )
                 logger.info(f"Embedding count: {embedding_count}")
-                
+
                 rows = await conn.fetch(
                     """
                     SELECT
@@ -735,9 +786,9 @@ class Collection:
                     limit,
                     offset,
                 )
-                
+
                 logger.info(f"Query returned {len(rows)} rows")
-                
+
                 result = [
                     {
                         "file_id": row["file_id"],
@@ -748,11 +799,13 @@ class Collection:
                     }
                     for row in rows
                 ]
-                
+
                 logger.info(f"Returning {len(result)} document groups")
                 return result
-                
+
         except Exception as e:
-            logger.error(f"Error in aggregate_document_groups: {type(e).__name__}: {str(e)}")
+            logger.error(
+                f"Error in aggregate_document_groups: {type(e).__name__}: {str(e)}"
+            )
             logger.error(f"Error details: {e.__dict__}")
             raise

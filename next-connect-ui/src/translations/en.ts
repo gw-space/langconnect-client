@@ -15,6 +15,10 @@ export const en = {
     selectAll: 'Select all',
     selected: '{{count}} selected',
     total: 'Total {{count}}',
+    confirmDelete: 'Confirm Delete',
+    cancel: 'Cancel',
+    deleting: 'Deleting...',
+    actions: 'Actions',
   },
   sidebar: {
     main: 'Main',
@@ -99,7 +103,25 @@ export const en = {
       uploadRequireFiles: 'Please select files to upload',
       deleteSuccess: 'Document deleted successfully',
       deleteError: 'Failed to delete document',
-      fetchError: 'Failed to fetch documents'
+      fetchError: 'Failed to fetch documents',
+      loadSuccess: 'Successfully loaded {{count}} chunks',
+      verificationUpdated: 'Verification status updated successfully',
+      verificationError: 'Failed to update verification status',
+      allVerified: 'All chunks verified successfully',
+      allUnverified: 'All chunks unverified successfully',
+      deleteConfirm: 'Are you sure you want to delete {{count}} selected items?'
+    },
+    tabs: {
+      documents: 'Documents',
+      chunks: 'Chunks'
+    },
+    columns: {
+      source: 'Source',
+      fileId: 'File ID',
+      content: 'Content',
+      chunks: 'Chunks',
+      characters: 'Characters',
+      timestamp: 'Timestamp'
     },
     modal: {
       uploadTitle: 'Upload Document',
