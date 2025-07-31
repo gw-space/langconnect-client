@@ -4,6 +4,7 @@ add_document전에 possible vulnerabilties collection에 이미 동일 내용이
 
 아래의 metadata와 content의 요소들은 유지하되 내용은 맞게 수정해서 집어넣어야됨.
 [metadata]
+source: 현재 LLM 모델명(e.g. claude sonnet 4, gpt-4o, etc)
 severity:high
 spec_reference:TS 24.008, TS 36.413
 attack_complexity:high

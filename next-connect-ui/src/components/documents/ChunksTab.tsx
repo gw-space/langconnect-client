@@ -169,11 +169,9 @@ export const ChunksTab = ({
                   className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
                 />
               </th>
-              {!hasVerifyCheckbox && (
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  {t('documents.columns.source')}
-                </th>
-              )}
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                {t('documents.columns.source')}
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                 {t('documents.columns.content')}
               </th>
@@ -210,46 +208,44 @@ export const ChunksTab = ({
                   />
                 </td>
 
-                {!hasVerifyCheckbox && (
-                  <td className="px-4 py-4">
-                    <Dialog open={openSourcePopovers.has(doc.id)} onOpenChange={(open) => onToggleSourcePopover(doc.id, open)}>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-auto p-0 text-left">
-                          <span className="text-sm text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
-                            {doc.metadata?.source || 'N/A'}
-                          </span>
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="w-[500px] max-w-[90vw]">
-                        <DialogHeader>
-                          <DialogTitle>Source Details</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                          <div className="text-sm flex justify-between">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Source:</span>
-                            <span className="text-gray-900 dark:text-gray-100">{doc.metadata?.source || 'N/A'}</span>
-                          </div>
-                          <div className="text-sm flex justify-between">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">File ID:</span>
-                            <span className="text-gray-900 dark:text-gray-100 font-mono">{doc.metadata?.file_id || 'N/A'}</span>
-                          </div>
-                          <div className="text-sm flex justify-between">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Characters:</span>
-                            <span className="text-gray-900 dark:text-gray-100">{doc.content.length.toLocaleString()}</span>
-                          </div>
-                          <div className="text-sm flex justify-between">
-                            <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
-                            <span className="text-gray-900 dark:text-gray-100">
-                              {doc.metadata?.timestamp || doc.metadata?.created_at ? 
-                                new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
-                                'N/A'}
-                            </span>
-                          </div>
+                <td className="px-4 py-4">
+                  <Dialog open={openSourcePopovers.has(doc.id)} onOpenChange={(open) => onToggleSourcePopover(doc.id, open)}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-auto p-0 text-left">
+                        <span className="text-sm text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">
+                          {doc.metadata?.source || 'N/A'}
+                        </span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[500px] max-w-[90vw]">
+                      <DialogHeader>
+                        <DialogTitle>Source Details</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Source:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{doc.metadata?.source || 'N/A'}</span>
                         </div>
-                      </DialogContent>
-                    </Dialog>
-                  </td>
-                )}
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">File ID:</span>
+                          <span className="text-gray-900 dark:text-gray-100 font-mono">{doc.metadata?.file_id || 'N/A'}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Characters:</span>
+                          <span className="text-gray-900 dark:text-gray-100">{doc.content.length.toLocaleString()}</span>
+                        </div>
+                        <div className="text-sm flex justify-between">
+                          <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
+                          <span className="text-gray-900 dark:text-gray-100">
+                            {doc.metadata?.timestamp || doc.metadata?.created_at ? 
+                              new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
+                              'N/A'}
+                          </span>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </td>
                 <td className="px-4 py-4">
                   <Dialog open={openPopovers.has(doc.id)} onOpenChange={(open) => onTogglePopover(doc.id, open)}>
                     <DialogTrigger asChild>
