@@ -74,6 +74,37 @@ export const ChunksTab = ({
     ? filteredDocuments.filter(doc => doc.metadata?.verified === true).length 
     : 0
 
+  // Helper function to format feasibility score with color coding
+  const formatFeasibilityScore = (feasibility: any) => {
+    if (feasibility === undefined || feasibility === null) {
+      return { text: 'N/A', color: 'text-gray-500 dark:text-gray-400' }
+    }
+    
+    let score: number
+    if (typeof feasibility === 'number') {
+      score = feasibility
+    } else {
+      const parsed = parseFloat(feasibility)
+      if (isNaN(parsed)) {
+        return { text: feasibility.toString(), color: 'text-gray-500 dark:text-gray-400' }
+      }
+      score = parsed
+    }
+    
+    // Color coding based on score (with dark mode support)
+    if (score >= 8) {
+      return { text: score.toString(), color: 'text-red-600 dark:text-red-400 font-semibold' }
+    } else if (score >= 6) {
+      return { text: score.toString(), color: 'text-orange-600 dark:text-orange-400 font-medium' }
+    } else if (score >= 4) {
+      return { text: score.toString(), color: 'text-yellow-600 dark:text-yellow-400' }
+    } else if (score >= 2) {
+      return { text: score.toString(), color: 'text-blue-600 dark:text-blue-400' }
+    } else {
+      return { text: score.toString(), color: 'text-green-600 dark:text-green-400' }
+    }
+  }
+
   const handleVerifiedChange = async (documentId: string, verified: boolean) => {
     if (!selectedCollection) return
 
@@ -300,26 +331,26 @@ export const ChunksTab = ({
                             </div>
                           </ScrollArea>
                         </TabsContent>
-                                                  <TabsContent value="metadata" className="mt-4">
-                            <ScrollArea className="h-[400px] max-h-[60vh]">
-                              {doc.metadata && Object.keys(doc.metadata).length > 0 ? (
-                                <div className="space-y-2">
-                                  {Object.entries(doc.metadata).map(([key, value]) => (
-                                    <div key={key} className="text-sm flex justify-between py-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0">
-                                      <span className="font-medium text-gray-700 dark:text-gray-300">{key}:</span>
-                                      <span className="text-gray-900 dark:text-gray-100 font-mono break-all">
-                                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                                  No metadata available
-                                </div>
-                              )}
-                            </ScrollArea>
-                          </TabsContent>
+                        <TabsContent value="metadata" className="mt-4">
+                          <ScrollArea className="h-[400px] max-h-[60vh]">
+                            {doc.metadata && Object.keys(doc.metadata).length > 0 ? (
+                              <div className="space-y-2">
+                                {Object.entries(doc.metadata).map(([key, value]) => (
+                                  <div key={key} className="text-sm flex justify-between py-2 border-b border-gray-200 dark:border-gray-600 last:border-b-0">
+                                    <span className="font-medium text-gray-700 dark:text-gray-300">{key}:</span>
+                                    <span className="text-gray-900 dark:text-gray-100 font-mono break-all">
+                                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                                No metadata available
+                              </div>
+                            )}
+                          </ScrollArea>
+                        </TabsContent>
                       </Tabs>
                     </DialogContent>
                   </Dialog>
@@ -344,9 +375,21 @@ export const ChunksTab = ({
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <span className="text-sm text-gray-900 dark:text-gray-100">
-                        {doc.metadata?.attack_feasibility || 'N/A'}
-                      </span>
+                      {(() => {
+                        // Try to find attack_feasibility or similar fields
+                        // Note: 'attack_feasibility' is the correct spelling, 'attack_feasivility' is a typo used in prompts
+                        const feasibilityValue = doc.metadata?.attack_feasibility || // Correct spelling
+                                               doc.metadata?.attack_feasivility || // Typo version (for backward compatibility)
+                                               doc.metadata?.feasibility ||
+                                               doc.metadata?.score
+                        
+                        const formatted = formatFeasibilityScore(feasibilityValue)
+                        return (
+                          <span className={`text-sm ${formatted.color}`}>
+                            {formatted.text}
+                          </span>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center justify-center">
