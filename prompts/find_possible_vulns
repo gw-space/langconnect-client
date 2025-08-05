@@ -1,66 +1,67 @@
-Mobile Vulnerabilities collection의 모든 documents에 대해서(list documents할때 limit을 1000으로 호출) 각각, 3GPP Specification collection과 인터넷 정보도 참조하여 3GPP Specification에서 유발될 만한 새로운 possible vulnerabilities들이 있다고 판단되면(해당 부분에서 특별한 취약점으로 볼만한 내용이 없으면 패스해도됨), attack feasivility를 세심하게 판단하여(1점부터 10점까지 점수를 매기고) Possible Vulnerabilities collection에 다음과 같은 metadata와 content 예시와 같은 구조를 사용하여 enable_chunking:false로 넣어줘. metadata와 content의 항목을 수정하면 안돼.
-add_document전에 possible vulnerabilties collection에 이미 동일 내용이 없을때만 집어넣어
+Process all documents in the Mobile Vulnerabilities collection systematically:
 
+PROCESS:
+1. Initialize: offset = 0, total_processed = 0
+2. Call: list_documents(collection_id="[ID]", limit=10, offset=offset)
+3. Process each document in the response
+4. Update: total_processed += number_of_documents_in_response
+5. If response has 10 documents: offset += 10, go to step 2
+6. If response has < 10 documents: you're done
 
-아래의 metadata와 content의 요소들은 유지하되 내용은 맞게 수정해서 집어넣어야됨.
-[metadata]
-source: 현재 LLM 모델명(e.g. claude sonnet 4, gpt-4o, etc)
-severity:high
-spec_reference:TS 24.008, TS 36.413
-attack_complexity:high
-attack_feasivility: 1 to 10
-source_collection:3GPP_Specification
-vulnerability_type:handover_security
-affected_generations: 3G, 4G, ..
-verified:true or false(처음 넣을 때는 무조건 false)
+TRACKING:
+- Keep count of documents processed
+- Note any errors or issues encountered
+- Report progress after each batch
 
+ERROR HANDLING:
+- If a document fails to process, note it and continue with the next
+- If the API call fails, retry once before moving to next batch
 
-[content]
-**Vulnerability: Inter-System Handover Security Context Derivation Weaknesses**
+Start with the first batch and continue until all documents are processed. 
 
-**Risk Level:** High
-**Affected Technologies:** 2G, 3G, 4G, 5G (All generations)
-**Related Standards:** 3GPP TS 24.008, TS 36.413, TS 33.401
+For each document:
+	1.	Cross-reference the document with:
+	  •	Relevant specifications in the 3GPP Specification collection.
+	  •	Related and corroborative information from public internet sources.
+	2.	Identify any new possible vulnerabilities that could be inferred or derived based on the information in the 3GPP specifications.
+	  •	If no significant or potentially exploitable issue is found in the specifications, skip the document.
+	3.	For any newly discovered possible vulnerability:
+	  •	Carefully assess and assign an attack feasibility score on a scale from 1 (low feasibility) to 10 (high feasibility).
+  	•	Check for duplicates: Before adding, ensure that the same vulnerability does not already exist in the Possible Vulnerabilities collection (based on similar metadata and content).
+	4.	If it is confirmed as new:
+	  •	Insert it into the Possible Vulnerabilities collection using the exact JSON format below.
+	  •	Set enable_chunking: false.
+	  •	All keys in metadata and content must remain unchanged. Do not alter or rename any fields.
+	  •	The example values below are for demonstration only. All values must be updated based on actual analysis.
 
-**Root Cause Analysis (from Specifications):**
-The specifications require complex security key derivation during inter-system handovers, converting between different generation security contexts. This creates opportunities for cryptographic weaknesses and key prediction attacks.
-
-**Specification Evidence:**
-- TS 24.008: "An ME shall derive the GSM ciphering key (Kc') from the stored GPRS GSM ciphering key... using the key derivation function"
-- TS 24.008: "derive the UMTS security keys UMTS ciphering key (CK') and UMTS integrity key (IK') from KASME and the NAS uplink COUNT value"
-- Complex conversion functions c3, c4, c5 between different key types
-
-**Attack Scenarios:**
-1. Cryptographic attacks on key derivation functions
-2. Cross-generation key prediction through mathematical analysis
-3. Handover timing attacks to capture intermediate keys
-4. Key correlation attacks across different network generations
-5. Downgrade attacks forcing weaker key derivation paths
-
-**Technical Impact:**
-- Compromise of derived security keys
-- Cross-generation security weakness exploitation
-- Potential for cryptographic key recovery
-- Handover-based session hijacking
-
-**Exploitation Requirements:**
-- Deep cryptographic analysis capabilities
-- Knowledge of multiple generation key derivation functions
-- Ability to trigger or intercept handover procedures
-- Advanced mathematical attack techniques
-
-**Mitigation Strategies:**
-1. Implement additional key strengthening during derivation
-2. Use fresh cryptographic material for each handover
-3. Monitor for unusual handover patterns
-4. Implement handover authentication mechanisms
-5. Regular cryptographic strength assessment
-
-**Detection Methods:**
-- Monitor for repeated handover attempts
-- Detect unusual inter-system transition patterns
-- Track key usage across handover boundaries
-- Alert on cryptographic anomalies during handovers
-
-**Attack Feasibility:**
-- Evaluation of the practical applicability of this vulnerability carefully
+Example Format (Template — Values Are Examples Only)
+  [metadata]
+    "source": "gpt-4o",  // ← Use the actual LLM model used (e.g., gpt-4o, claude sonnet 4)
+    "severity": "high",
+    "spec_reference": "TS 24.008, TS 36.413",  // ← Reference actual relevant 3GPP specs
+    "attack_complexity": "high",
+    "attack_feasibility": 3,  // ← Integer score from 1 (lowest) to 10 (highest)
+    "source_collection": "3GPP_Specification",
+    "vulnerability_type": "handover_security",  // ← Use appropriate category
+    "affected_generations": "3G, 4G, 5G",  // ← Adjust per analysis
+    "verified": false  // ← Always false on initial insertion
+  
+  [content]: 
+    "Vulnerability": "Inter-System Handover Security Context Derivation Weaknesses",
+    "Risk Level": "High",
+    "Affected Technologies": "2G, 3G, 4G, 5G (All generations)",
+    "Related Standards": "3GPP TS 24.008, TS 36.413, TS 33.401",
+    "Root Cause Analysis (from Specifications)": "The specifications require complex security key derivation during inter-system handovers, converting between different generation security contexts. This creates opportunities for cryptographic weaknesses and key prediction attacks.",
+    "Specification Evidence": "- TS 24.008: \"An ME shall derive the GSM ciphering key (Kc')...\"\n- TS 24.008: \"derive the UMTS ciphering key (CK')...\"\n- Use of functions c3, c4, c5 for key conversion",
+    "Attack Scenarios": "1. Cryptographic attacks on key derivation functions\n2. Downgrade attacks forcing weaker key paths\n3. Timing attacks on handover transitions",
+    "Technical Impact": "- Key compromise across generations\n- Handover-based session hijacking\n- Potential cryptographic key recovery",
+    "Exploitation Requirements": "- Access to or ability to trigger handover procedures\n- Advanced cryptanalysis skills\n- Monitoring of inter-system transitions",
+    "Mitigation Strategies": "1. Use fresh keys per handover\n2. Authenticate inter-system transitions\n3. Add cryptographic hardening to key derivation",
+    "Detection Methods": "- Monitor for repeated or abnormal handovers\n- Track key reuse across systems\n- Alert on unexpected inter-generation transitions",
+    "Attack Feasibility": "Evaluation of the practical applicability of this vulnerability carefully"
+  
+Important Notes:
+	•	All keys in metadata and content must remain unchanged. Do not alter or rename any fields.
+	•	Only insert the document if it is clearly a new vulnerability not already present in the Possible Vulnerabilities collection.
+	•	All values must be accurate and based on technical analysis of 3GPP specifications or other credible sources.
+	•	Avoid false positives: skip if the document/spec does not present a meaningful security issue.

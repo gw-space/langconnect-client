@@ -1,0 +1,103 @@
+1. Identify Latest Mobile Network Vulnerabilities
+	•	Use both web search and cve-search_mcp to find recent vulnerabilities related to mobile communications (e.g., 2G, 3G, 4G, 5G).
+	•	For each discovered vulnerability, check if a similar one already exists in the Mobile Vulnerabilities collection.
+
+2. If Not Found in Mobile Vulnerabilities Collection:
+	•	Create a document using enable_chunking: false with the following structure:
+    [metadata fields for Mobile Vulnerabilities]
+        "source": "web search" or "cve-search_mcp",
+        "cve_id": "CVE-ID if available, else none",
+        "cvd_id": "CVD-ID if available, else none",
+        "affected_technologies": ["4G", "5G", etc.]
+        "severity": 1 to 10
+
+    [content fields for Mobile Vulnerabilities]
+        "source": "web page URL or cve-search_mcp",
+        "vulnerability name": "...",
+        "vulnerability id cve": "",
+        "coordinated disclosure_id_cvd": "",
+        "related standards": ["3GPP spec IDs (e.g., TS 43.020)"],
+        "related publications": ["..."],
+        "affected technologies": ["..."]],
+        "vendors affected": [],
+        "root cause": "...",
+        "impact": "...",
+        "3GPP spec content related to root cause": "...",
+        "summary": "..."    
+
+3. Link to 3GPP Specification
+	•	For each vulnerability, find the related 3GPP specification in the 3GPP Specification collection.
+	•	If not present:
+	1.	Use check_3gpp_link to get the download URL.
+    	•	3GPP ZIP filenames use a base-36 encoded version code.
+        •	Format: <TS number>-<version code>.zip
+        Example: 38331-i60.zip
+            •	Decode as:
+            •	i = 18 (base-36 → Release 18)
+            •	6 = 6
+            •	0 = 0
+        → This means version 18.6.0 (Release 18)
+        Only proceed if the decoded major version is 18.
+	2.	Download using download_3gpp_document.
+    	•	Path: /Users/yungeon-u/Desktop/Project/3gpp-document-downloader-mcp/downloads/
+        •	If the specified ZIP file already exists in this directory, skip download.(You can use Filesystem tool)
+        •	You may use check_download_status to confirm download completion.
+	3.	Upload it to 3GPP Specification collection using upload_local_file
+        •	enable_chunking: true
+        •	collection: 3GPP Specification
+          [metadata fields for 3GPP Specification]
+            "spec_number": "TS 38.331",  // This is Example 
+            "spec_title": "NR; Radio Resource Control (RRC) protocol specification",  // Example title
+            "release": "Rel-18",// This is Example 
+            "organization": "3GPP",// This is Example 
+            "technology": "5G",// This is Example 
+            "key_content": "5G Radio Access"// This is Example 
+        •	If any metadata field is unknown, perform web search to find the accurate value.
+        •	Do not modify or perform any other task not explicitly described.
+
+4. Perform new possible vulnerability derivation and add the results to the Possible Vulnerability collection.
+For each document:
+	1.	Cross-reference the document with:
+	  •	Relevant specifications in the 3GPP Specification collection.
+	  •	Related and corroborative information from public internet sources.
+	2.	Identify any new possible vulnerabilities that could be inferred or derived based on the information in the 3GPP specifications.
+	  •	If no significant or potentially exploitable issue is found in the specifications, skip the document.
+	3.	For any newly discovered possible vulnerability:
+	  •	Carefully assess and assign an attack feasibility score on a scale from 1 (low feasibility) to 10 (high feasibility).
+  	•	Important!: Check for duplicates: Before adding, ensure that the same vulnerability does not already exist in the Possible Vulnerabilities collection (based on similar metadata and content).
+	4.	If it is confirmed as new:
+	  •	Insert it into the Possible Vulnerabilities collection using the exact JSON format below.
+	  •	Set enable_chunking: false.
+	  •	All keys in metadata and content must remain unchanged. Do not alter or rename any fields.
+	  •	The example values below are for demonstration only. All values must be updated based on actual analysis.
+
+    [metadata fields for Possible Vulnerabilities]
+      "source": "gpt-4o",  // ← Use the actual LLM model used (e.g., gpt-4o, claude sonnet 4)
+      "severity": "high",
+      "spec_reference": "TS 24.008, TS 36.413",  // ← Reference actual relevant 3GPP specs
+      "attack_complexity": "high",
+      "attack_feasibility": 3,  // ← Integer score from 1 (lowest) to 10 (highest)
+      "source_collection": "3GPP_Specification",
+      "vulnerability_type": "handover_security",  // ← Use appropriate category
+      "affected_generations": "3G, 4G, 5G",  // ← Adjust per analysis
+      "verified": false  // ← Always false on initial insertion
+  
+    [content fields for Possible Vulnerabilities]: 
+      "Vulnerability": "Inter-System Handover Security Context Derivation Weaknesses",
+      "Risk Level": "Low" or " Medium" or "High",
+      "Affected Technologies": "2G, 3G, 4G, 5G (All generations)",
+      "Related Standards": "3GPP TS 24.008, TS 36.413, TS 33.401",
+      "Root Cause Analysis (from Specifications)": "The specifications require complex security key derivation during inter-system handovers, converting between different generation security contexts. This creates opportunities for cryptographic weaknesses and key prediction attacks.",
+      "Specification Evidence": "- TS 24.008: \"An ME shall derive the GSM ciphering key (Kc')...\"\n- TS 24.008: \"derive the UMTS ciphering key (CK')...\"\n- Use of functions c3, c4, c5 for key conversion",
+      "Attack Scenarios": "1. Cryptographic attacks on key derivation functions\n2. Downgrade attacks forcing weaker key paths\n3. Timing attacks on handover transitions",
+      "Technical Impact": "- Key compromise across generations\n- Handover-based session hijacking\n- Potential cryptographic key recovery",
+      "Exploitation Requirements": "- Access to or ability to trigger handover procedures\n- Advanced cryptanalysis skills\n- Monitoring of inter-system transitions",
+      "Mitigation Strategies": "1. Use fresh keys per handover\n2. Authenticate inter-system transitions\n3. Add cryptographic hardening to key derivation",
+      "Detection Methods": "- Monitor for repeated or abnormal handovers\n- Track key reuse across systems\n- Alert on unexpected inter-generation transitions",
+      "Attack Feasibility": "Evaluation of the practical applicability of this vulnerability carefully"
+    
+Important Notes:
+	•	All keys in metadata and content must remain unchanged. Do not alter or rename any fields.
+	•	Only insert the document if it is clearly a new vulnerability not already present in the Mobile Vulnerabilities and Possible Vulnerabilities collection.
+	•	All values must be accurate and based on technical analysis of 3GPP specifications or other credible sources.
+	•	Avoid false positives: skip if the document/spec does not present a meaningful security issue.
