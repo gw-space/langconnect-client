@@ -6,15 +6,15 @@
     <string>com.langconnect.startup</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/yungeon-u/Desktop/Project/langconnect-client/start-langconnect.sh</string>
+        <string>PROJECT_PATH/start-langconnect.sh</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>StandardErrorPath</key>
-    <string>/Users/yungeon-u/Desktop/Project/langconnect-client/startup-error.log</string>
+    <string>PROJECT_PATH/startup-error.log</string>
     <key>StandardOutPath</key>
-    <string>/Users/yungeon-u/Desktop/Project/langconnect-client/startup.log</string>
+    <string>PROJECT_PATH/startup.log</string>
     <key>WorkingDirectory</key>
-    <string>/Users/yungeon-u/Desktop/Project/langconnect-client</string>
+    <string>PROJECT_PATH</string>
 </dict>
 </plist>

@@ -169,3 +169,7 @@ mcpserver/mcp_config.json
 
 # Database backups
 DB_backup/
+
+# Auto-startup logs
+startup.log
+startup-error.log

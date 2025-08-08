@@ -187,6 +187,31 @@ make down
    make logs
    ```
 
+### Auto-Startup Configuration (macOS)
+
+To automatically start LangConnect services on system boot:
+
+```bash
+# Install auto-startup service
+chmod +x install-autostart.sh
+./install-autostart.sh
+```
+
+This will:
+- Create a LaunchAgent that starts the services automatically
+- Start Docker if it's not running
+- Launch all LangConnect services
+
+**Manual control:**
+```bash
+# Test the service manually
+launchctl start com.langconnect.startup
+
+# Remove auto-startup
+launchctl unload ~/Library/LaunchAgents/com.langconnect.startup.plist
+rm ~/Library/LaunchAgents/com.langconnect.startup.plist
+```
+
 ### Building and Development
 
 #### **Quick Build Commands**
