@@ -1,6 +1,9 @@
-import { NextAuthOptions } from "next-auth"
+import { NextAuthOptions, getServerSession } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { serverFetchAPI } from "./api"
+
+
+export const getAuthSession = () => getServerSession(authOptions)
 
 const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
 

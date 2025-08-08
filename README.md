@@ -413,5 +413,5 @@ In the Inspector:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 <div align="center">
-Made with ❤️ by <a href="https://github.com/teddynote-lab">TeddyNote LAB</a>
+Forked from [TeddyNote LAB](https://github.com/teddynote-lab)
 </div>

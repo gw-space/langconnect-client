@@ -16,7 +16,6 @@ export interface DocumentGroup {
   chunk_count: number
   total_chars: number
   created_at: string
-  // For backward compatibility with existing UI code
-  chunks?: Document[]
+  chunks: Document[]
   timestamp?: string
 }

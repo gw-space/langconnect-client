@@ -53,11 +53,17 @@ export const useDocuments = (selectedCollection: string) => {
             file_id,
             chunks: [],
             timestamp: metadata.timestamp || metadata.created_at || metadata.date || 'N/A',
-            total_chars: 0
+            total_chars: 0,
+            chunk_count: 0,
+            created_at: metadata.created_at || metadata.timestamp || metadata.date || new Date().toISOString()
           }
         }
-        sourceGroups[file_id].chunks.push(doc)
-        sourceGroups[file_id].total_chars += doc.content.length
+        const group = sourceGroups[file_id]
+        if (group) {
+          group.chunks.push(doc)
+          group.total_chars += doc.content.length
+          group.chunk_count += 1
+        }
       })
 
       const groups = Object.values(sourceGroups)

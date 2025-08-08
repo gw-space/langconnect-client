@@ -29,7 +29,7 @@ export const useChunks = (selectedCollection: string) => {
       // Fetch all chunks in parallel batches
       const batchSize = 3000
       const batches = []
-      let offset = 0
+      const offset = 0
       
       // First, get one batch to determine total count
       const firstBatch = await fetchBatch(0)

@@ -16,7 +16,6 @@ export const en = {
     selected: '{{count}} selected',
     total: 'Total {{count}}',
     confirmDelete: 'Confirm Delete',
-    cancel: 'Cancel',
     deleting: 'Deleting...',
     actions: 'Actions',
   },

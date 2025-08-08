@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.langconnect.startup</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/yungeon-u/Desktop/Project/langconnect-client/start-langconnect.sh</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardErrorPath</key>
+    <string>/Users/yungeon-u/Desktop/Project/langconnect-client/startup-error.log</string>
+    <key>StandardOutPath</key>
+    <string>/Users/yungeon-u/Desktop/Project/langconnect-client/startup.log</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/yungeon-u/Desktop/Project/langconnect-client</string>
+</dict>
+</plist>

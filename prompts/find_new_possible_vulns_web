@@ -26,7 +26,7 @@
         "summary": "..."    
 
 3. Link to 3GPP Specification
-	•	For each vulnerability, find the related 3GPP specification in the 3GPP Specification collection.
+	•	For each vulnerability, find the related 3GPP specification in the 3GPP Specification collection. You can use list_document_groups or list_available_specs.
 	•	If not present:
 	1.	Use check_3gpp_link to get the download URL.
     	•	3GPP ZIP filenames use a base-36 encoded version code.

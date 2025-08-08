@@ -16,7 +16,6 @@ export const ko = {
     selected: '{{count}}개 선택됨',
     total: '총 {{count}}개',
     confirmDelete: '삭제 확인',
-    cancel: '취소',
     deleting: '삭제 중...',
     actions: '작업',
   },

@@ -3,8 +3,9 @@ import { getAuthSession } from '@/lib/auth'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string; documentId: string } }
+  { params }: { params: Promise<{ id: string; documentId: string }> }
 ) {
+  const { id, documentId } = await params
   try {
     const session = await getAuthSession()
     if (!session?.user) {
@@ -17,11 +18,11 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: 'Invalid verified value' }, { status: 400 })
     }
 
-    const response = await fetch(`${process.env.API_BASE_URL}/collections/${params.id}/documents/${params.documentId}/verification`, {
+    const response = await fetch(`${process.env.API_BASE_URL}/collections/${id}/documents/${documentId}/verification`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.accessToken}`
+        'Authorization': `Bearer ${session.user.accessToken}`
       },
       body: JSON.stringify({ verified })
     })
