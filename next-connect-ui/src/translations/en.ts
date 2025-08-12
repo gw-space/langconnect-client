@@ -108,7 +108,10 @@ export const en = {
       verificationError: 'Failed to update verification status',
       allVerified: 'All chunks verified successfully',
       allUnverified: 'All chunks unverified successfully',
-      deleteConfirm: 'Are you sure you want to delete {{count}} selected items?'
+      deleteConfirm: 'Are you sure you want to delete {{count}} selected items?',
+      exportSuccess: 'Successfully exported {count} chunks to Excel',
+      exportError: 'Failed to export to Excel',
+      exportInProgress: 'Exporting to Excel...'
     },
     tabs: {
       documents: 'Documents',
@@ -131,6 +134,12 @@ export const en = {
       supportedFormats: 'Supported formats: PDF, TXT, MD, DOCX, HTML',
       uploading: 'Uploading...',
       processing: 'Processing document...'
+    },
+    export: {
+      toExcel: 'Export to Excel',
+      exportAllChunks: 'Export All Chunks',
+      exportAnalysis: 'Export with Analysis',
+      selectFormat: 'Select Export Format'
     }
   },
   search: {

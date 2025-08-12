@@ -52,10 +52,10 @@ export const useDocuments = (selectedCollection: string) => {
             source,
             file_id,
             chunks: [],
-            timestamp: metadata.timestamp || metadata.created_at || metadata.date || 'N/A',
+            timestamp: metadata.timestamp || metadata['created_at'] || metadata['date'] || 'N/A',
             total_chars: 0,
             chunk_count: 0,
-            created_at: metadata.created_at || metadata.timestamp || metadata.date || new Date().toISOString()
+            created_at: metadata['created_at'] || metadata.timestamp || metadata['date'] || new Date().toISOString()
           }
         }
         const group = sourceGroups[file_id]

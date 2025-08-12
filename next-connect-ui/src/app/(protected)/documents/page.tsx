@@ -1,14 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { RefreshCw, Trash2, FileText, Loader2, Database, FolderOpen, Archive, BookOpen, Upload, File, Filter, ChevronLeft, ChevronRight, X, Info } from 'lucide-react'
+import { Trash2, FileText, Loader2, Archive, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,15 +17,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { UploadDocumentModal } from '@/components/modals/upload-document-modal'
-import { Collection } from '@/types/collection'
-import { Document, DocumentGroup } from '@/types/document'
+
 import { useTranslation } from '@/hooks/use-translation'
 
 // Custom hooks
@@ -46,6 +36,7 @@ import { ChunksTab } from '@/components/documents/ChunksTab'
 
 // Utils
 import { filterDocumentsBySource, filterDocumentGroupsBySource, calculateStats, extractAvailableSources } from '@/utils/documentUtils'
+import { exportChunksToExcel } from '@/utils/excelExport'
 
 export default function DocumentsPage() {
   const { t } = useTranslation()
@@ -65,6 +56,7 @@ export default function DocumentsPage() {
   const [openPopovers, setOpenPopovers] = useState<Set<string>>(new Set())
   const [openSourcePopovers, setOpenSourcePopovers] = useState<Set<string>>(new Set())
   const [selectedSources, setSelectedSources] = useState<string[]>([])
+  const [exportLoading, setExportLoading] = useState(false)
 
   // Derived state
   const availableSources = useMemo(() => extractAvailableSources(documents), [documents])
@@ -83,6 +75,36 @@ export default function DocumentsPage() {
     [collections, selectedCollection]
   )
 
+    // Excel export function
+  const handleExport = useCallback(async () => {
+    if (!selectedCollection || !chunksLoaded) {
+      toast.error(t('documents.messages.exportError'))
+      return
+    }
+
+    if (!chunks || chunks.length === 0) {
+      toast.error('내보낼 청크 데이터가 없습니다.')
+      return
+    }
+
+    setExportLoading(true)
+    try {
+      const collectionName = currentCollection?.name || 'collection'
+      const timestamp = new Date().toISOString().split('T')[0]
+      const filename = `${collectionName}_chunks_${timestamp}.xlsx`
+      
+      console.log('Starting export with:', chunks.length, 'chunks')
+      exportChunksToExcel(chunks, filename)
+      
+      toast.success(`${chunks.length}개의 청크를 성공적으로 내보냈습니다.`)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast.error(error instanceof Error ? error.message : '엑셀 내보내기 중 오류가 발생했습니다.')
+    } finally {
+      setExportLoading(false)
+    }
+  }, [selectedCollection, chunksLoaded, chunks, currentCollection, t])
+
   // Pagination
   const itemsPerPage = 10
   const { 
@@ -91,8 +113,7 @@ export default function DocumentsPage() {
     paginatedItems: paginatedDocumentGroups, 
     goToPage, 
     goToNextPage, 
-    goToPreviousPage,
-    resetPagination 
+    goToPreviousPage
   } = usePagination(filteredDocumentGroups, itemsPerPage)
 
   const { 
@@ -247,13 +268,15 @@ export default function DocumentsPage() {
   return (
     <div className="min-h-screen p-6 bg-background dark:bg-background">
       <div className="max-w-7xl mx-auto space-y-6">
-        <DocumentsHeader 
+                <DocumentsHeader
           collections={collections}
           selectedCollection={selectedCollection}
           onCollectionChange={setSelectedCollection}
           onRefresh={handleRefresh}
           onUpload={() => setShowUploadModal(true)}
+          onExport={handleExport}
           refreshing={refreshing}
+          exportLoading={exportLoading}
         />
 
         {/* Loading State */}

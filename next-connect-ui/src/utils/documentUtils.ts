@@ -16,7 +16,7 @@ export const groupDocumentsBySource = (documents: Document[]): DocumentGroup[] =
         timestamp: metadata.timestamp || 'N/A',
         total_chars: 0,
         chunk_count: 0,
-        created_at: metadata.created_at || metadata.timestamp || new Date().toISOString()
+        created_at: metadata['created_at'] || metadata.timestamp || new Date().toISOString()
       }
     }
     const group = sourceGroups[file_id]

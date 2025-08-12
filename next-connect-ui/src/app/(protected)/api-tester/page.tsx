@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
 import { Code, Send, Loader2, Check, X, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -116,7 +115,6 @@ const API_ENDPOINTS = {
 
 export default function APITesterPage() {
   const { t } = useTranslation()
-  const { data: session } = useSession()
   const [selectedGroup, setSelectedGroup] = useState<string>('health')
   const [selectedEndpoint, setSelectedEndpoint] = useState<string>('')
   const [collectionId, setCollectionId] = useState('')
@@ -174,7 +172,7 @@ export default function APITesterPage() {
     return url
   }
 
-  const buildRequestBody = (endpoint: APIEndpoint): any => {
+  const buildRequestBody = (endpoint: APIEndpoint): Record<string, string | number | object> | null => {
     if (!endpoint.body) return null
 
     switch (endpoint.id) {
@@ -193,17 +191,17 @@ export default function APITesterPage() {
         }
       
       case 'update-collection':
-        const updateData: any = {}
+        const updateData: Record<string, string | object> = {}
         
         // Only add name if provided
         if (newCollectionName.trim()) {
-          updateData.name = newCollectionName
+          updateData['name'] = newCollectionName
         }
         
         // Only add metadata if provided
         if (newMetadata.trim()) {
           try {
-            updateData.metadata = JSON.parse(newMetadata)
+            updateData['metadata'] = JSON.parse(newMetadata)
           } catch {
             // Invalid JSON metadata, ignore
           }
@@ -226,7 +224,7 @@ export default function APITesterPage() {
         }
       
       case 'search-documents':
-        const body: any = {
+        const body: Record<string, string | number | object> = {
           query: searchQuery || 'test query',
           limit: searchLimit,
           search_type: searchType
@@ -234,7 +232,7 @@ export default function APITesterPage() {
         
         if (searchFilter) {
           try {
-            body.filter = JSON.parse(searchFilter)
+            body['filter'] = JSON.parse(searchFilter)
           } catch {
             // Invalid JSON filter, ignore
           }
@@ -290,8 +288,9 @@ export default function APITesterPage() {
         if (endpoint.id === 'create-documents') {
           // For create-documents, use FormData
           const formData = new FormData()
-          formData.append('collection_name', body.collection_name || '')
-          formData.append('metadata', JSON.stringify(body.metadata || {}))
+          const bodyData = body as { collection_name?: string; metadata?: object }
+          formData.append('collection_name', bodyData.collection_name || '')
+          formData.append('metadata', JSON.stringify(bodyData.metadata || {}))
           
           options.body = formData
           // Don't set Content-Type header for FormData - let browser set it with boundary
@@ -305,7 +304,7 @@ export default function APITesterPage() {
       }
 
       const response = await fetch(url, options)
-      let data
+      let data: unknown
       try {
         data = await response.json()
       } catch (e) {
@@ -316,7 +315,12 @@ export default function APITesterPage() {
         success: response.ok,
         status: response.status,
         data: response.ok ? data : undefined,
-        error: !response.ok ? (data.message || data.error || data.detail || 'Request failed') : undefined
+        error: !response.ok ? (
+          (data as any)?.message || 
+          (data as any)?.error || 
+          (data as any)?.detail || 
+          'Request failed'
+        ) : undefined
       }
 
       setResponse(apiResponse)

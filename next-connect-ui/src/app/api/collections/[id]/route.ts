@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { serverFetchAPI } from "@/lib/api"
 
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     // 백엔드 API 호출 - returns 204 No Content on success
@@ -20,7 +20,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   }
 }
 
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const response = await serverFetchAPI(`/collections/${id}`, {
     method: "GET",

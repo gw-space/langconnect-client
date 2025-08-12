@@ -18,7 +18,7 @@ export async function PATCH(
       return NextResponse.json({ success: false, message: 'Invalid verified value' }, { status: 400 })
     }
 
-    const response = await fetch(`${process.env.API_BASE_URL}/collections/${id}/documents/${documentId}/verification`, {
+    const response = await fetch(`${process.env['API_BASE_URL']}/collections/${id}/documents/${documentId}/verification`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

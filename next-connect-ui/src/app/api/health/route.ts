@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { serverFetchAPI } from "@/lib/api"
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     // 백엔드 API 호출
     const response = await serverFetchAPI("/health", {

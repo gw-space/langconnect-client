@@ -675,7 +675,7 @@ if __name__ == "__main__":
     # Update the client with the valid token
     client.update_token(valid_token)
 
-    print(f"\n✅ Starting MCP SSE server on http://127.0.0.1:{SSE_PORT}")
+    print(f"\n✅ Starting MCP SSE server on http://0.0.0.0:{SSE_PORT}")
     print(
         "This server is for MCP clients only and cannot be accessed directly in a browser."
     )
@@ -683,7 +683,7 @@ if __name__ == "__main__":
     print("When it expires, restart the server to get a new token.")
 
     try:
-        mcp.run(transport="sse", port=SSE_PORT)
+        mcp.run(transport="sse", port=SSE_PORT, host="0.0.0.0")
     except KeyboardInterrupt:
         print("\n\n✅ Server stopped by user")
     except Exception as e:

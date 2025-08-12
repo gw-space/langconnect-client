@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
+    "dev:type-check": "tsc --noEmit && next dev -p 3000",
     "build": "next build",
+    "build:type-check": "tsc --noEmit && next build",
     "start": "next start -p 3000",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch"
   },
@@ -41,6 +44,7 @@
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.1",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.67"
   },
   "devDependencies": {

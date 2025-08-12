@@ -5,7 +5,7 @@ import { serverFetchAPI } from "./api"
 
 export const getAuthSession = () => getServerSession(authOptions)
 
-const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+const API_URL = process.env['API_URL'] || process.env['NEXT_PUBLIC_API_URL'] || "http://localhost:8080"
 
 // Helper function to refresh access token
 export async function refreshAccessToken(token: any) {
@@ -43,6 +43,7 @@ export async function refreshAccessToken(token: any) {
 }
 
 export const authOptions: NextAuthOptions = {
+  secret: (process.env['NEXTAUTH_SECRET'] || 'fallback-secret-key') as string,
   providers: [
     CredentialsProvider({
       id: "credentials",
@@ -137,9 +138,8 @@ export const authOptions: NextAuthOptions = {
     maxAge: 24 * 60 * 60, // 24 hours
   },
   events: {
-    async signOut(message) {
+    async signOut(_message) {
       // 로그아웃 시 추가 정리 작업
     }
-  },
-  secret: process.env.NEXTAUTH_SECRET,
+  }
 }

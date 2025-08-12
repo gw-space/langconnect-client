@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, Plus, Trash2, Folder, FileText, Loader2, Database, FolderOpen, Archive, BookOpen, Info, X, Edit } from 'lucide-react'
+import { RefreshCw, Plus, Trash2, Folder, FileText, Loader2, Database, FolderOpen, Archive, BookOpen, Info, Edit } from 'lucide-react'
 import { CollectionWithStats, Collection } from '@/types/collection'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -58,7 +58,7 @@ export default function CollectionsPage() {
         return
       }
 
-      const collectionsData: CollectionWithStats[] = res.data.map((c: any) => ({
+      const collectionsData: CollectionWithStats[] = res.data.map((c: Collection & { document_count: number; chunk_count: number }) => ({
         ...c,
         stats: {
           documents: c.document_count,

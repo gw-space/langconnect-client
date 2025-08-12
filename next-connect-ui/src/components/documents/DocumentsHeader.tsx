@@ -1,8 +1,9 @@
-import { FileText, RefreshCw, Upload } from 'lucide-react'
+import { FileText, RefreshCw, Upload, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Collection } from '@/types/collection'
 import { useTranslation } from '@/hooks/use-translation'
+
 
 interface DocumentsHeaderProps {
   collections: Collection[]
@@ -10,7 +11,9 @@ interface DocumentsHeaderProps {
   onCollectionChange: (collectionId: string) => void
   onRefresh: () => void
   onUpload: () => void
+  onExport: () => void
   refreshing: boolean
+  exportLoading?: boolean
 }
 
 export const DocumentsHeader = ({
@@ -19,7 +22,9 @@ export const DocumentsHeader = ({
   onCollectionChange,
   onRefresh,
   onUpload,
-  refreshing
+  onExport,
+  refreshing,
+  exportLoading = false
 }: DocumentsHeaderProps) => {
   const { t } = useTranslation()
 
@@ -45,6 +50,19 @@ export const DocumentsHeader = ({
             ))}
           </SelectContent>
         </Select>
+        
+                {/* Export to Excel Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!selectedCollection || exportLoading}
+          onClick={onExport}
+          className="flex items-center gap-2"
+        >
+          <Download className={`w-4 h-4 ${exportLoading ? 'animate-spin' : ''}`} />
+          {t('documents.export.toExcel')}
+        </Button>
+        
         <Button
           onClick={onRefresh}
           disabled={refreshing}

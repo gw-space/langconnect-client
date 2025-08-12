@@ -45,7 +45,7 @@ export function UploadDocumentModal({
   const { t } = useTranslation()
   const [files, setFiles] = useState<File[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const { data: session } = useSession()
+  const { data: _session } = useSession()
 
   const formSchema = z.object({
     collectionId: z.string().min(1, {

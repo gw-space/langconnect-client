@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -268,8 +268,8 @@ export const ChunksTab = ({
                         <div className="text-sm flex justify-between">
                           <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
                           <span className="text-gray-900 dark:text-gray-100">
-                            {doc.metadata?.timestamp || doc.metadata?.created_at ? 
-                              new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
+                            {doc.metadata?.timestamp || doc.metadata?.['created_at'] ? 
+                              new Date(doc.metadata.timestamp || doc.metadata['created_at']).toLocaleString() : 
                               'N/A'}
                           </span>
                         </div>
@@ -310,8 +310,8 @@ export const ChunksTab = ({
                         <div className="text-sm flex justify-between">
                           <span className="font-medium text-gray-700 dark:text-gray-300">Timestamp:</span>
                           <span className="text-gray-900 dark:text-gray-100">
-                            {doc.metadata?.timestamp || doc.metadata?.created_at ? 
-                              new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
+                            {doc.metadata?.timestamp || doc.metadata?.['created_at'] ? 
+                              new Date(doc.metadata.timestamp || doc.metadata['created_at']).toLocaleString() : 
                               'N/A'}
                           </span>
                         </div>
@@ -362,8 +362,8 @@ export const ChunksTab = ({
                 </td>
                 <td className="px-4 py-4">
                   <span className="text-sm text-gray-900 dark:text-gray-100">
-                    {doc.metadata?.timestamp || doc.metadata?.created_at ? 
-                      new Date(doc.metadata.timestamp || doc.metadata.created_at).toLocaleString() : 
+                    {doc.metadata?.timestamp || doc.metadata?.['created_at'] ? 
+                      new Date(doc.metadata.timestamp || doc.metadata['created_at']).toLocaleString() : 
                       'N/A'}
                   </span>
                 </td>
@@ -371,17 +371,17 @@ export const ChunksTab = ({
                   <>
                     <td className="px-4 py-4">
                       <span className="text-sm text-gray-900 dark:text-gray-100">
-                        {doc.metadata?.severity || 'N/A'}
+                        {doc.metadata?.['severity'] || 'N/A'}
                       </span>
                     </td>
                     <td className="px-4 py-4">
                       {(() => {
                         // Try to find attack_feasibility or similar fields
                         // Note: 'attack_feasibility' is the correct spelling, 'attack_feasivility' is a typo used in prompts
-                        const feasibilityValue = doc.metadata?.attack_feasibility || // Correct spelling
-                                               doc.metadata?.attack_feasivility || // Typo version (for backward compatibility)
-                                               doc.metadata?.feasibility ||
-                                               doc.metadata?.score
+                        const feasibilityValue = doc.metadata?.['attack_feasibility'] || // Correct spelling
+                                               doc.metadata?.['attack_feasivility'] || // Typo version (for backward compatibility)
+                                               doc.metadata?.['feasibility'] ||
+                                               doc.metadata?.['score']
                         
                         const formatted = formatFeasibilityScore(feasibilityValue)
                         return (

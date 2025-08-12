@@ -108,7 +108,10 @@ export const ko = {
       verificationError: '확인 상태 업데이트 실패',
       allVerified: '모든 청크가 성공적으로 확인되었습니다',
       allUnverified: '모든 청크 확인이 해제되었습니다',
-      deleteConfirm: '선택한 {{count}}개 항목을 삭제하시겠습니까?'
+      deleteConfirm: '선택한 {{count}}개 항목을 삭제하시겠습니까?',
+      exportSuccess: '{count}개의 청크를 Excel로 성공적으로 내보냈습니다',
+      exportError: 'Excel 내보내기 실패',
+      exportInProgress: 'Excel로 내보내는 중...'
     },
     tabs: {
       documents: '문서',
@@ -131,6 +134,12 @@ export const ko = {
       supportedFormats: '지원 형식: PDF, TXT, MD, DOCX, HTML',
       uploading: '업로드 중...',
       processing: '문서 처리 중...'
+    },
+    export: {
+      toExcel: 'Excel로 내보내기',
+      exportAllChunks: '모든 청크 내보내기',
+      exportAnalysis: '분석과 함께 내보내기',
+      selectFormat: '내보내기 형식 선택'
     }
   },
   search: {

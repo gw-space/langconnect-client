@@ -8,7 +8,7 @@ import {
   Folder,
   Code,
   Save,
-  Database,
+
   Edit
 } from "lucide-react"
 
