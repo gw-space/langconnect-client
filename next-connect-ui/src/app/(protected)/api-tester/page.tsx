@@ -347,7 +347,7 @@ export default function APITesterPage() {
 
   return (
     <div className="min-h-screen p-6 bg-background dark:bg-background">
-      <div className="max-w-7xl mx-auto space-y-6">
+              <div className="max-w-[95%] mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent flex items-center gap-3">

@@ -350,3 +350,57 @@ async def update_document_verification(
         logger.error(f"Error type: {type(e)}")
         logger.error(f"Error details: {e.__dict__}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.patch("/collections/{collection_id}/documents/{document_id}/vulnerable")
+async def update_document_vulnerable(
+    user: Annotated[AuthenticatedUser, Depends(resolve_user)],
+    collection_id: UUID,
+    document_id: str,
+    vulnerable_data: dict,
+):
+    """Update document vulnerable status"""
+    try:
+        logger.info(
+            f"Updating vulnerable status for document {document_id} in collection {collection_id}"
+        )
+        logger.info(f"Vulnerable data: {vulnerable_data}")
+
+        vulnerable = vulnerable_data.get("vulnerable")
+        logger.info(
+            f"Original vulnerable value: {vulnerable} (type: {type(vulnerable)})"
+        )
+
+        # Convert to boolean if it's not already
+        if isinstance(vulnerable, str):
+            vulnerable = vulnerable.lower() in ("true", "1", "yes", "on")
+        elif isinstance(vulnerable, int):
+            vulnerable = bool(vulnerable)
+        elif not isinstance(vulnerable, bool):
+            vulnerable = bool(vulnerable)
+
+        logger.info(
+            f"Converted vulnerable value: {vulnerable} (type: {type(vulnerable)})"
+        )
+
+        # Update document metadata directly - vulnerable 필드만 업데이트
+        collection = Collection(
+            collection_id=str(collection_id),
+            user_id=user.identity,
+        )
+
+        logger.info(f"Calling update_document with: {{'vulnerable': {vulnerable}}}")
+        success = await collection.update_document(
+            document_id, {"vulnerable": vulnerable}
+        )
+        logger.info(f"Update result: {success}")
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Document not found")
+
+        return {"success": True, "message": "Vulnerable status updated successfully"}
+    except Exception as e:
+        logger.error(f"Error updating vulnerable status: {e}")
+        logger.error(f"Error type: {type(e)}")
+        logger.error(f"Error details: {e.__dict__}")
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -65,13 +65,17 @@ export const ChunksTab = ({
 }: ChunksTabProps) => {
   const { t } = useTranslation()
   const [updatingVerified, setUpdatingVerified] = useState<string | null>(null)
+  const [updatingVulnerable, setUpdatingVulnerable] = useState<string | null>(null)
 
   // Check if collection has verify_checkbox enabled
   const hasVerifyCheckbox = selectedCollection?.metadata?.verify_checkbox === true
 
-  // Calculate verified chunks count
+  // Calculate verified and vulnerable chunks count
   const verifiedChunksCount = hasVerifyCheckbox 
     ? filteredDocuments.filter(doc => doc.metadata?.verified === true).length 
+    : 0
+  const vulnerableChunksCount = hasVerifyCheckbox 
+    ? filteredDocuments.filter(doc => doc.metadata?.vulnerable === true).length 
     : 0
 
   // Helper function to format feasibility score with color coding
@@ -134,6 +138,36 @@ export const ChunksTab = ({
     }
   }
 
+  const handleVulnerableChange = async (documentId: string, vulnerable: boolean) => {
+    if (!selectedCollection) return
+
+    setUpdatingVulnerable(documentId)
+    try {
+      // vulnerable 필드는 완전히 별도 엔드포인트 사용
+      const response = await fetch(`/api/collections/${selectedCollection.uuid}/documents/${documentId}/vulnerable`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ vulnerable }),
+      })
+
+      const result = await response.json()
+      if (!result.success) {
+        toast.error('Failed to update vulnerable status')
+        return
+      }
+
+      toast.success('Vulnerable status updated')
+      onRefresh() // Refresh to get updated data
+    } catch (error) {
+      console.error('Failed to update vulnerable status:', error)
+      toast.error('Failed to update vulnerable status')
+    } finally {
+      setUpdatingVulnerable(null)
+    }
+  }
+
   if (loadingChunks) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -167,17 +201,33 @@ export const ChunksTab = ({
       {/* Verification Statistics */}
       {hasVerifyCheckbox && (
         <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-blue-800 dark:text-blue-200 font-medium">
-              Verification Status:
-            </span>
-            <span className="text-blue-600 dark:text-blue-400">
-              {verifiedChunksCount} of {totalCount} chunks verified
-            </span>
-            <span className="text-blue-500 dark:text-blue-300">
-              ({Math.round((verifiedChunksCount / totalCount) * 100)}%)
-            </span>
+          <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-blue-800 dark:text-blue-200 font-medium">
+                Verified:
+              </span>
+              <span className="text-blue-600 dark:text-blue-400">
+                {verifiedChunksCount} of {totalCount} chunks
+              </span>
+              <span className="text-blue-500 dark:text-blue-300">
+                ({Math.round((verifiedChunksCount / totalCount) * 100)}%)
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+                <span className="text-white text-xs font-bold">!</span>
+              </div>
+              <span className="text-red-800 dark:text-red-200 font-medium">
+                Vulnerable:
+              </span>
+              <span className="text-red-600 dark:text-red-400">
+                {vulnerableChunksCount} of {totalCount} chunks
+              </span>
+              <span className="text-red-500 dark:text-red-300">
+                ({Math.round((vulnerableChunksCount / totalCount) * 100)}%)
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -220,9 +270,12 @@ export const ChunksTab = ({
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t('documents.columns.score')}
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    {t('documents.columns.verified')}
-                  </th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      {t('documents.columns.verified')}
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                      Vulnerable
+                    </th>
                 </>
               )}
             </tr>
@@ -391,21 +444,36 @@ export const ChunksTab = ({
                         )
                       })()}
                     </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-center">
-                        {updatingVerified === doc.id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
-                        ) : (
-                          <input
-                            type="checkbox"
-                            checked={doc.metadata?.verified === true}
-                            onChange={(e) => handleVerifiedChange(doc.id, e.target.checked)}
-                            className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
-                            title="Mark as verified"
-                          />
-                        )}
-                      </div>
-                    </td>
+                                            <td className="px-4 py-4">
+                          <div className="flex items-center justify-center">
+                            {updatingVerified === doc.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
+                            ) : (
+                              <input
+                                type="checkbox"
+                                checked={doc.metadata?.verified === true}
+                                onChange={(e) => handleVerifiedChange(doc.id, e.target.checked)}
+                                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded cursor-pointer"
+                                title="Mark as verified"
+                              />
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center justify-center">
+                            {updatingVulnerable === doc.id ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                            ) : (
+                              <input
+                                type="checkbox"
+                                checked={doc.metadata?.vulnerable === true}
+                                onChange={(e) => handleVulnerableChange(doc.id, e.target.checked)}
+                                className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded cursor-pointer"
+                                title="Mark as vulnerable"
+                              />
+                            )}
+                          </div>
+                        </td>
                   </>
                 )}
               </tr>

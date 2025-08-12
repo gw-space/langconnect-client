@@ -267,7 +267,7 @@ export default function DocumentsPage() {
 
   return (
     <div className="min-h-screen p-6 bg-background dark:bg-background">
-      <div className="max-w-7xl mx-auto space-y-6">
+              <div className="max-w-[95%] mx-auto space-y-6">
                 <DocumentsHeader
           collections={collections}
           selectedCollection={selectedCollection}

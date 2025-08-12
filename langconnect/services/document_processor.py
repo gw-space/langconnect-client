@@ -38,7 +38,7 @@ MIMETYPE_BASED_PARSER = MimeTypeBasedParser(
 async def process_document(
     file: UploadFile,
     metadata: dict | None = None,
-    chunk_size: int = 1000,
+    chunk_size: int = 2000,
     chunk_overlap: int = 200,
     enable_chunking: bool = True,
 ) -> list[Document]:
