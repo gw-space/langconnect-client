@@ -1,5 +1,5 @@
-1. Identify Latest Mobile Network Vulnerabilities
-	•	Use both web search and cve-search_mcp to find recent vulnerabilities related to mobile communications (e.g., 2G, 3G, 4G, 5G).
+1. Identify IMSI finding or tracking Mobile Network Vulnerabilities
+	•	Use both web search and cve-search_mcp to find vulnerabilities related to mobile communications (e.g., 3G, 4G, 5G).
 	•	For each discovered vulnerability, check if a similar one already exists in the Mobile Vulnerabilities collection.
 
 2. If Not Found in Mobile Vulnerabilities Collection:
@@ -43,7 +43,8 @@
         •	If the specified ZIP file already exists in this directory, skip download.(You can use Filesystem tool)
         •	You may use check_download_status to confirm download completion.
 	3.	Upload it to 3GPP Specification collection using upload_local_file
-        •	enable_chunking: true
+        •	enable_chunking: true, 
+        •	chunksize = 4000, overlap= 600.
         •	collection: 3GPP Specification
           [metadata fields for 3GPP Specification]
             "spec_number": "TS 38.331",  // This is Example 
@@ -55,8 +56,9 @@
         •	If any metadata field is unknown, perform web search to find the accurate value.
         •	Do not modify or perform any other task not explicitly described.
 
-4. Perform new possible vulnerability derivation and add the results to the Possible Vulnerability collection.
+4. This is most important part. Perform new possible idea or vulnerability derivation especially about IMSI finding or tracking from 3gpp specifications using mobile vulnerabilities collection and add the results to the Possible Vulnerability collection.
 For each document:
+  0. From the phrases in the 3GPP specification collection, use the information from the mobile vulnerabilities collection to identify potential new vulnerabilities in the 3GPP specification documents. Do not include vulnerabilities that already exist. The new vulnerabilities must be completely different from the existing ones. Derive ideas based on entirely new approaches.
 	1.	Cross-reference the document with:
 	  •	Relevant specifications in the 3GPP Specification collection.
 	  •	Related and corroborative information from public internet sources.

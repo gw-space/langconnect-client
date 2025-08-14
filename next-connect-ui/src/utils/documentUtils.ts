@@ -46,17 +46,18 @@ export const filterDocumentGroupsBySource = (documentGroups: DocumentGroup[], so
   return documentGroups.filter(group => sources.includes(group.source))
 }
 
-export const calculateStats = (documents: Document[], chunks: Document[], activeTab: string) => {
+export const calculateStats = (documents: Document[], chunks: Document[], activeTab: string, documentGroups?: DocumentGroup[]) => {
   if (activeTab === 'chunks') {
     return {
-      totalDocuments: documents.length,
+      totalDocuments: documentGroups ? documentGroups.length : documents.length,
       totalChunks: chunks.length,
       totalCharacters: chunks.reduce((sum, doc) => sum + doc.content.length, 0)
     }
   } else {
+    // documents 탭에서는 documentGroups를 사용
     return {
-      totalDocuments: documents.length,
-      totalChunks: documents.length,
+      totalDocuments: documentGroups ? documentGroups.length : documents.length,
+      totalChunks: chunks.length, // chunks 탭의 총 개수
       totalCharacters: documents.reduce((sum, doc) => sum + doc.content.length, 0)
     }
   }

@@ -59,7 +59,13 @@ export default function DocumentsPage() {
   const [exportLoading, setExportLoading] = useState(false)
 
   // Derived state
-  const availableSources = useMemo(() => extractAvailableSources(documents), [documents])
+  const availableSources = useMemo(() => {
+    if (activeTab === 'chunks') {
+      return extractAvailableSources(chunks)
+    }
+    return extractAvailableSources(documents)
+  }, [activeTab, chunks, documents])
+  
   const filteredDocumentGroups = useMemo(() => 
     filterDocumentGroupsBySource(documentGroups, selectedSources), 
     [documentGroups, selectedSources]
@@ -126,7 +132,7 @@ export default function DocumentsPage() {
   } = usePagination(filteredDocuments, itemsPerPage)
 
   // Stats
-  const stats = useMemo(() => calculateStats(documents, chunks, activeTab), [documents, chunks, activeTab])
+  const stats = useMemo(() => calculateStats(documents, chunks, activeTab, documentGroups), [documents, chunks, activeTab, documentGroups])
 
   // Effects
   useEffect(() => {
@@ -137,18 +143,29 @@ export default function DocumentsPage() {
     if (selectedCollection) {
       fetchDocuments()
       clearChunksCache()
-    }
-  }, [selectedCollection, fetchDocuments, clearChunksCache])
-
-  useEffect(() => {
-    if (activeTab === 'chunks' && selectedCollection && !chunksLoaded.has(selectedCollection)) {
+      // selectedCollection이 변경되면 chunks도 로드
       loadChunksForCollection()
     }
-  }, [activeTab, selectedCollection, chunksLoaded, loadChunksForCollection])
+  }, [selectedCollection, fetchDocuments, clearChunksCache, loadChunksForCollection])
 
   useEffect(() => {
-    setSelectedSources(availableSources)
-  }, [availableSources])
+    // activeTab이 변경되거나 chunks가 로드되면 availableSources를 업데이트
+    if (activeTab === 'chunks' && chunks.length > 0) {
+      const chunkSources = extractAvailableSources(chunks)
+      setSelectedSources(chunkSources)
+    } else if (activeTab === 'documents' && documents.length > 0) {
+      const docSources = extractAvailableSources(documents)
+      setSelectedSources(docSources)
+    }
+  }, [activeTab, chunks, documents])
+
+  // source filter가 변경될 때 chunks를 다시 로드하지 않음 (프론트엔드에서만 필터링)
+  useEffect(() => {
+    if (activeTab === 'chunks' && selectedCollection && chunksLoaded.has(selectedCollection)) {
+      // source filter가 변경되면 chunks를 다시 로드하지 않음
+      // 프론트엔드에서만 필터링
+    }
+  }, [selectedSources, activeTab, selectedCollection, chunksLoaded])
 
   // Event handlers
   const handleRefresh = useCallback(() => {

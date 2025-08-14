@@ -23,7 +23,8 @@ COPY requirements.txt ./
 # Create virtual environment and install dependencies
 RUN uv venv && \
     uv pip install -r requirements.txt && \
-    uv pip install "unstructured[docx]"
+    uv pip install "unstructured[docx]" && \
+    uv pip install gotrue
 
 # Final stage
 FROM python:3.11-slim

@@ -10,7 +10,7 @@ export const useChunks = (selectedCollection: string) => {
   const [loadingChunks, setLoadingChunks] = useState(false)
 
   const loadChunksForCollection = useCallback(async () => {
-    if (!selectedCollection || chunksLoaded.has(selectedCollection)) return
+    if (!selectedCollection) return
 
     try {
       setLoadingChunks(true)
@@ -43,7 +43,7 @@ export const useChunks = (selectedCollection: string) => {
       // If there are more chunks, fetch them in parallel
       if (firstBatch.length === batchSize) {
         const remainingBatches = []
-        for (let i = 1; i < 10; i++) { // Limit to 10 batches to avoid too many requests
+        for (let i = 1; i < 30; i++) { // 30배치로 늘려서 90,000개까지
           remainingBatches.push(fetchBatch(i * batchSize))
         }
         
@@ -60,15 +60,14 @@ export const useChunks = (selectedCollection: string) => {
       setChunksLoaded(prev => new Set(prev).add(selectedCollection))
     } catch (error) {
       console.error('Failed to load chunks:', error)
-      toast.error(t('common.error'), {
-        description: t('documents.messages.fetchError')
-      })
+      toast.error('Chunks 로딩 실패')
     } finally {
       setLoadingChunks(false)
     }
-  }, [selectedCollection, chunksLoaded, t])
+  }, [selectedCollection, t])
 
   const clearChunksCache = useCallback(() => {
+    setChunks([])
     setChunksLoaded(prev => {
       const newSet = new Set(prev)
       newSet.delete(selectedCollection)
